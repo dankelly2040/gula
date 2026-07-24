@@ -1,81 +1,169 @@
-import * as AC from "@bacons/apple-colors";
-import { Image } from "expo-image";
-import { Link } from "expo-router";
-import { Pressable, Text, View } from "react-native";
-import { Doc } from "../../convex/_generated/dataModel";
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import { colors, spacing, fontSize, radii } from '../constants/theme';
+import { getZoneForScore } from '../constants/enums';
+import type { PizzaLog } from '../db/types';
 
-type Pizza = Doc<"pizzas">;
-
-const FALLBACK_IMAGES: Record<string, string> = {
-  Margherita:
-    "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=400&q=80",
-  Pepperoni:
-    "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=400&q=80",
-  "BBQ Chicken":
-    "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&q=80",
-  "Truffle Mushroom":
-    "https://images.unsplash.com/photo-1571407970349-bc81e7e96d47?w=400&q=80",
-  "Garden Veggie":
-    "https://images.unsplash.com/photo-1511689660979-10d2b1aada49?w=400&q=80",
-  "Spicy Arrabbiata":
-    "https://images.unsplash.com/photo-1458642849426-cfb724f15ef7?w=400&q=80",
-  "Meat Feast":
-    "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=400&q=80",
-  "Smoky Bacon Ranch":
-    "https://images.unsplash.com/photo-1588315029754-2dd089d39a1a?w=400&q=80",
+type Props = {
+  log: PizzaLog;
+  rank?: number;
 };
 
-const DEFAULT_FALLBACK =
-  "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&q=80";
-
-export default function PizzaCard({ pizza }: { pizza: Pizza }) {
-  const imageUri = pizza.image
-    ? `https://joyous-labrador-95.convex.cloud/api/storage/${pizza.image}`
-    : FALLBACK_IMAGES[pizza.name] ?? DEFAULT_FALLBACK;
+export function PizzaCard({ log, rank }: Props) {
+  const router = useRouter();
+  const zone = getZoneForScore(log.moneyShot);
+  const date = new Date(log.timestamp);
+  const dateStr = date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
 
   return (
-    <Link
-      href={{ pathname: "/(menu)/pizza/[id]", params: { id: pizza._id } }}
-      asChild
-      withAppleZoom
+    <Pressable
+      style={styles.card}
+      onPress={() => router.push(`/pizza/${log.id}`)}
     >
-      <Link.Trigger>
-        <Pressable
-          style={{
-            backgroundColor: AC.secondarySystemBackground as any,
-            borderRadius: 16,
-            borderCurve: "continuous",
-            overflow: "hidden",
-          }}
-        >
-          <Image
-            source={{ uri: imageUri }}
-            style={{ width: "100%", aspectRatio: 1 }}
-            contentFit="cover"
-            transition={200}
-          />
-          <View style={{ padding: 12, gap: 4 }}>
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "600",
-                color: AC.label as any,
-              }}
-              numberOfLines={1}
-            >
-              {pizza.name}
+      {rank != null && (
+        <View style={styles.rankBadge}>
+          <Text style={styles.rankText}>#{rank}</Text>
+        </View>
+      )}
+
+      {log.photoUri ? (
+        <Image source={{ uri: log.photoUri }} style={styles.photo} contentFit="cover" />
+      ) : (
+        <View style={[styles.photo, styles.photoPlaceholder]}>
+          <Text style={styles.photoPlaceholderText}>🍕</Text>
+        </View>
+      )}
+
+      <View style={styles.info}>
+        <View style={styles.topRow}>
+          <Text style={styles.spotName} numberOfLines={1}>
+            {log.spotName ?? 'Unknown spot'}
+          </Text>
+          <Text style={styles.date}>{dateStr}</Text>
+        </View>
+
+        <View style={styles.scores}>
+          <View style={[styles.scoreBadge, { backgroundColor: zone.color + '20' }]}>
+            <Text style={[styles.scoreValue, { color: zone.color }]}>
+              {log.moneyShot}
             </Text>
-            <Text style={{ fontSize: 13, color: AC.secondaryLabel as any }}>
-              ${pizza.basePrice.toFixed(2)}
+            <Text style={[styles.scoreLabel, { color: zone.color }]}>
+              {zone.label}
             </Text>
-            {pizza.rating != null && (
-              <Text style={{ fontSize: 12, color: AC.tertiaryLabel as any }}>
-                ★ {pizza.rating.toFixed(1)}
-              </Text>
-            )}
           </View>
-        </Pressable>
-      </Link.Trigger>
-    </Link>
+
+          {log.tags.style && (
+            <View style={styles.tag}>
+              <Text style={styles.tagText}>{log.tags.style}</Text>
+            </View>
+          )}
+        </View>
+
+        {log.notes ? (
+          <Text style={styles.notes} numberOfLines={1}>
+            {log.notes}
+          </Text>
+        ) : null}
+      </View>
+    </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.bgCard,
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  rankBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    backgroundColor: colors.gold + '20',
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    zIndex: 1,
+  },
+  rankText: {
+    fontSize: fontSize.xs,
+    fontWeight: '800',
+    color: colors.gold,
+  },
+  photo: {
+    width: 100,
+    height: 100,
+  },
+  photoPlaceholder: {
+    backgroundColor: colors.bgElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoPlaceholderText: {
+    fontSize: 36,
+  },
+  info: {
+    flex: 1,
+    padding: spacing.md,
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  spotName: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  date: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+  },
+  scores: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  scoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radii.sm,
+  },
+  scoreValue: {
+    fontSize: fontSize.md,
+    fontWeight: '800',
+  },
+  scoreLabel: {
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+  },
+  tag: {
+    backgroundColor: colors.bgElevated,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radii.sm,
+  },
+  tagText: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+  },
+  notes: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+  },
+});

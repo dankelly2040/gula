@@ -1,14 +1,24 @@
 {
   "expo": {
-    "icon": "https://agent.expo.dev/static/icon.png",
-    "orientation": "default",
-    "scheme": "acme",
+    "name": "Gula",
+    "slug": "gula",
+    "scheme": "gula",
+    "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "https://agent.expo.dev/static/icon.png",
     "web": {
       "output": "server"
     },
+    "ios": {
+      "bundleIdentifier": "com.dannymanning.gula",
+      "supportsTablet": false
+    },
     "android": {
-      "predictiveBackGestureEnabled": false
+      "adaptiveIcon": {
+        "foregroundImage": "https://agent.expo.dev/static/icon.png",
+        "backgroundColor": "#1a1a2e"
+      },
+      "package": "com.dannymanning.gula"
     },
     "experiments": {
       "reactCompiler": true
@@ -31,18 +41,21 @@
           }
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Gula to access your photos to add pizza pics to your logs.",
+          "cameraPermission": "Allow Gula to use your camera to snap your slice."
+        }
+      ],
       "@bacons/apple-colors"
     ],
-    "name": "Local Pizza",
     "owner": "jonsamp",
     "extra": {
       "router": {},
       "eas": {
         "projectId": "927f8541-4e72-4171-b60d-dcd368c9446e"
       }
-    },
-    "ios": {
-      "bundleIdentifier": "com.dannymanning.local-pizza"
     }
   }
 }
