@@ -1,38 +1,39 @@
+// 2L "Wood-fired, daylight" palette (design round, July 2026).
+// Rules: brand ember is the ONLY interactive color; gold is reserved for
+// points and Nirvana; danger is reserved for destructive actions.
 export const colors = {
-  // Brand
-  brand: '#E63946',
-  brandDark: '#C62828',
-  brandLight: '#FF6B6B',
+  // Brand (the one color that means "tap me")
+  brand: '#D9530E',
+  brandDark: '#B84508',
+  brandLight: '#F26E2E',
 
-  // Backgrounds
-  bg: '#0F0F1A',
-  bgCard: '#1A1A2E',
-  bgElevated: '#252540',
-  bgInput: '#2A2A45',
+  // Backgrounds (pale butter yellow)
+  bg: '#FAF1B2',
+  bgCard: '#FFFEF4',
+  bgElevated: '#F1E599',
+  bgInput: '#F5EBA4',
 
-  // Text
-  textPrimary: '#FFFFFF',
-  textSecondary: '#A0A0B8',
-  textMuted: '#6B6B80',
+  // Text (espresso)
+  textPrimary: '#2C1E12',
+  textSecondary: '#6B5744',
+  textMuted: '#9A8670',
 
-  // Accents
-  gold: '#FFD700',
-  green: '#4CAF50',
-  orange: '#FF9800',
+  // Reserved accents
+  gold: '#A06E08', // points and Nirvana only; deepened to hold contrast on the yellow ground
 
-  // Score zones (Vom to Nirvana)
-  zoneVom: '#8B0000',
-  zoneRegret: '#D32F2F',
-  zoneFine: '#FF9800',
-  zoneCrave: '#FFC107',
-  zoneBliss: '#8BC34A',
-  zoneNirvana: '#FFD700',
+  // Score zones (Vom to Nirvana), tuned for the light ground
+  zoneVom: '#8C1A0F',
+  zoneRegret: '#C43C24',
+  zoneFine: '#DD7E1C',
+  zoneCrave: '#E0A616',
+  zoneBliss: '#75A24E',
+  zoneNirvana: '#C89B08',
 
   // Utility
-  border: '#2E2E48',
-  overlay: 'rgba(0, 0, 0, 0.6)',
-  danger: '#EF5350',
-  success: '#66BB6A',
+  border: '#E2D488',
+  overlay: 'rgba(44, 30, 18, 0.45)',
+  danger: '#C0392B',
+  success: '#4E7A3A',
 } as const;
 
 export const spacing = {

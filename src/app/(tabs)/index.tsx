@@ -1,8 +1,10 @@
 import { View, Text, StyleSheet, Pressable, FlatList } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRankedLogs } from '../../hooks/use-pizza-logs';
+import { useProfile } from '../../hooks/use-profile';
 import { PizzaCard } from '../../components/pizza-card';
 import { colors, spacing, fontSize, radii } from '../../constants/theme';
 
@@ -19,27 +21,38 @@ export default function Activity() {
   const router = useRouter();
   const [sortBy, setSortBy] = useState<SortKey>('moneyShot');
   const { data: logs, isLoading } = useRankedLogs(sortBy);
+  const { data: profile } = useProfile();
 
   const totalPoints = logs.reduce((sum, l) => sum + l.pointsEarned, 0);
+  const streak = profile?.currentStreak ?? 0;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
-      <Text style={styles.title}>Your hall of fame</Text>
+      <Text style={styles.title}>Pizza stats</Text>
 
       {logs.length > 0 && (
         <View style={styles.statsRow}>
           <View style={styles.stat}>
             <Text style={styles.statValue}>{logs.length}</Text>
             <Text style={styles.statLabel}>
-              {logs.length === 1 ? 'slice' : 'slices'}
+              {logs.length === 1 ? 'pizza' : 'pizzas'}
             </Text>
           </View>
           <View style={styles.stat}>
             <Text style={[styles.statValue, { color: colors.gold }]}>
               {totalPoints}
             </Text>
-            <Text style={styles.statLabel}>points</Text>
+            <Text style={styles.statLabel}>Pizza Points</Text>
           </View>
+        </View>
+      )}
+
+      {streak >= 1 && (
+        <View style={styles.streakBanner}>
+          <SymbolView name="flame.fill" size={16} tintColor={colors.brand} />
+          <Text style={styles.streakText}>
+            {streak} week streak, keep it alive
+          </Text>
         </View>
       )}
 
@@ -66,10 +79,15 @@ export default function Activity() {
 
       {logs.length === 0 && !isLoading ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyIcon}>🍕</Text>
-          <Text style={styles.emptyTitle}>No slices yet</Text>
+          <SymbolView
+            name="fork.knife.circle"
+            size={56}
+            tintColor={colors.textMuted}
+            style={styles.emptyIcon}
+          />
+          <Text style={styles.emptyTitle}>No pizzas yet</Text>
           <Text style={styles.emptyText}>
-            Log your first slice and start building your pizza hall of fame.
+            Log your first pizza and start building your stats.
           </Text>
           <Pressable
             style={styles.emptyButton}
@@ -104,29 +122,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   title: {
-    fontSize: fontSize.xxl,
-    fontWeight: '800',
-    color: colors.textPrimary,
+    fontSize: fontSize.lg,
+    fontWeight: '700',
+    color: colors.textSecondary,
     marginBottom: spacing.md,
   },
   statsRow: {
     flexDirection: 'row',
-    gap: spacing.lg,
+    gap: spacing.xl,
     marginBottom: spacing.md,
   },
   stat: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing.xs,
+    alignItems: 'flex-start',
+    gap: 2,
   },
   statValue: {
-    fontSize: fontSize.xl,
+    fontSize: fontSize.xxl,
     fontWeight: '800',
     color: colors.textPrimary,
   },
   statLabel: {
     fontSize: fontSize.sm,
     color: colors.textMuted,
+    fontWeight: '600',
+  },
+  streakBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.bgCard,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  streakText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   sortRow: {
@@ -144,7 +178,6 @@ const styles = StyleSheet.create({
   },
   sortChipActive: {
     borderColor: colors.brand,
-    backgroundColor: colors.brand + '20',
   },
   sortChipText: {
     fontSize: fontSize.sm,
@@ -167,7 +200,6 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   emptyIcon: {
-    fontSize: 64,
     marginBottom: spacing.md,
   },
   emptyTitle: {
@@ -190,7 +222,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   emptyButtonText: {
-    color: colors.textPrimary,
+    // White is allowed here: it sits on the brand fill.
+    color: '#FFFDF8',
     fontSize: fontSize.lg,
     fontWeight: '700',
   },

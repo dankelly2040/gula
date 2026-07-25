@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SymbolView } from 'expo-symbols';
 import { colors, spacing, fontSize, radii } from '../../constants/theme';
 
 export default function Welcome() {
@@ -8,9 +9,14 @@ export default function Welcome() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + spacing.xxl }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.hero}>
-        <Text style={styles.logo}>🍕</Text>
+        <SymbolView
+          name="fork.knife.circle.fill"
+          size={72}
+          tintColor={colors.brand}
+          style={styles.logo}
+        />
         <Text style={styles.title}>Gula</Text>
         <Text style={styles.subtitle}>
           Rate every slice from Vom to Nirvana{'\n'}and build your pizza hall of fame.
@@ -27,7 +33,14 @@ export default function Welcome() {
 
         <Pressable
           style={styles.secondaryButton}
-          onPress={() => router.push('/(onboarding)/taste')}
+          onPress={() => router.push('/(onboarding)/intro')}
+        >
+          <Text style={styles.secondaryButtonText}>How it works</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.secondaryButton}
+          onPress={() => router.push('/sign-in')}
         >
           <Text style={styles.secondaryButtonText}>I already have an account</Text>
         </Pressable>
@@ -40,16 +53,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-    justifyContent: 'space-between',
   },
   hero: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
+    // Lift the brand block slightly above geometric center so it reads as
+    // optically centered against the CTA stack below.
+    paddingBottom: spacing.xxl,
   },
   logo: {
-    fontSize: 80,
     marginBottom: spacing.md,
   },
   title: {
@@ -66,16 +80,17 @@ const styles = StyleSheet.create({
   },
   bottom: {
     paddingHorizontal: spacing.lg,
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   primaryButton: {
     backgroundColor: colors.brand,
     borderRadius: radii.lg,
     paddingVertical: spacing.md,
     alignItems: 'center',
+    marginBottom: spacing.xs,
   },
   primaryButtonText: {
-    color: colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: fontSize.lg,
     fontWeight: '700',
   },

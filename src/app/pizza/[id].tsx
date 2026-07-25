@@ -1,10 +1,12 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Alert, Share } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { usePizzaLogs, useDeleteLog } from '../../hooks/use-pizza-logs';
+import { useDraftLogStore } from '../../state/draft-log';
 import { getZoneForScore } from '../../constants/enums';
+import type { SubScores, PizzaTags } from '../../db/types';
 import { colors, spacing, fontSize, radii } from '../../constants/theme';
 
 export default function PizzaDetail() {
@@ -33,6 +35,34 @@ export default function PizzaDetail() {
     day: 'numeric',
     year: 'numeric',
   });
+
+  const handleEdit = () => {
+    const draft = useDraftLogStore.getState();
+    draft.reset();
+    draft.setPhoto(log.photoUri ?? log.photoUrl);
+    draft.setMoneyShot(log.moneyShot);
+    (Object.keys(log.subScores) as (keyof SubScores)[]).forEach((key) => {
+      draft.setSubScore(key, log.subScores[key]);
+    });
+    draft.setSendFriend(log.sendFriend);
+    (Object.keys(log.tags) as (keyof PizzaTags)[]).forEach((key) => {
+      draft.setTag(key, log.tags[key]);
+    });
+    draft.setSpot(log.spotId, log.spotName);
+    draft.setNotes(log.notes);
+    draft.setCoords(log.lat, log.lng);
+    router.push(`/log/rate?editId=${log.id}`);
+  };
+
+  const handleShare = async () => {
+    const spot = log.spotName ?? 'a mystery spot';
+    const message = `I gave ${spot} a ${log.moneyShot}/100 on the money shot. Verdict: ${zone.label}. 🍕 Logged with Gula`;
+    try {
+      await Share.share({ message });
+    } catch {
+      // User dismissed the share sheet, nothing to do.
+    }
+  };
 
   const handleDelete = () => {
     Alert.alert('Delete this log?', 'This cannot be undone.', [
@@ -63,9 +93,17 @@ export default function PizzaDetail() {
         <Pressable onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={28} color={colors.textPrimary} />
         </Pressable>
-        <Pressable onPress={handleDelete}>
-          <Ionicons name="trash-outline" size={24} color={colors.danger} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable onPress={() => void handleShare()} hitSlop={4}>
+            <Ionicons name="share-outline" size={24} color={colors.textSecondary} />
+          </Pressable>
+          <Pressable onPress={handleEdit} hitSlop={4}>
+            <Ionicons name="pencil-outline" size={24} color={colors.textSecondary} />
+          </Pressable>
+          <Pressable onPress={handleDelete} hitSlop={4}>
+            <Ionicons name="trash-outline" size={24} color={colors.danger} />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView
@@ -193,6 +231,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.sm,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
   scrollContent: {
     paddingBottom: spacing.xxl,
   },
@@ -286,10 +329,13 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: colors.bgInput,
+    backgroundColor: colors.bgElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   pipFilled: {
     backgroundColor: colors.brand,
+    borderColor: colors.brand,
   },
   infoRow: {
     flexDirection: 'row',

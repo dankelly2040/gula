@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { colors, spacing, fontSize, radii } from '../constants/theme';
 import { getZoneForScore } from '../constants/enums';
 import type { PizzaLog } from '../db/types';
@@ -25,8 +26,10 @@ export function PizzaCard({ log, rank }: Props) {
       onPress={() => router.push(`/pizza/${log.id}`)}
     >
       {rank != null && (
-        <View style={styles.rankBadge}>
-          <Text style={styles.rankText}>#{rank}</Text>
+        <View style={[styles.rankBadge, rank === 1 && styles.rankBadgeFirst]}>
+          <Text style={[styles.rankText, rank === 1 && styles.rankTextFirst]}>
+            #{rank}
+          </Text>
         </View>
       )}
 
@@ -34,7 +37,7 @@ export function PizzaCard({ log, rank }: Props) {
         <Image source={{ uri: log.photoUri }} style={styles.photo} contentFit="cover" />
       ) : (
         <View style={[styles.photo, styles.photoPlaceholder]}>
-          <Text style={styles.photoPlaceholderText}>🍕</Text>
+          <SymbolView name="fork.knife" size={32} tintColor={colors.textMuted} />
         </View>
       )}
 
@@ -82,19 +85,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  // Neutral by default; gold is reserved for the top slice only.
   rankBadge: {
     position: 'absolute',
     top: spacing.sm,
     left: spacing.sm,
-    backgroundColor: colors.gold + '20',
+    backgroundColor: colors.bgElevated,
     borderRadius: radii.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     zIndex: 1,
   },
+  rankBadgeFirst: {
+    backgroundColor: colors.gold + '20',
+  },
   rankText: {
     fontSize: fontSize.xs,
     fontWeight: '800',
+    color: colors.textSecondary,
+  },
+  rankTextFirst: {
     color: colors.gold,
   },
   photo: {
@@ -105,9 +115,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  photoPlaceholderText: {
-    fontSize: 36,
   },
   info: {
     flex: 1,

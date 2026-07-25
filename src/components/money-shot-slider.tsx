@@ -20,21 +20,20 @@ const TRACK_HEIGHT = 12;
 const THUMB_SIZE = 36;
 const TRACK_PADDING = THUMB_SIZE / 2;
 
+// Runs on the UI runtime inside the pan gesture, so it must be a worklet:
+// calling a plain JS closure there throws under react-native-worklets 0.10+.
+function clampValue(x: number, trackWidth: number): number {
+  'worklet';
+  const usable = trackWidth - THUMB_SIZE;
+  if (usable <= 0) return 50;
+  const clamped = Math.max(0, Math.min(x - TRACK_PADDING, usable));
+  return Math.round((clamped / usable) * 100);
+}
+
 export function MoneyShotSlider({ value, onChange }: Props) {
   const [trackWidth, setTrackWidth] = useState(0);
   const zone = getZoneForScore(value);
-  const translateX = useSharedValue(0);
   const scale = useSharedValue(1);
-
-  const clampValue = useCallback(
-    (x: number) => {
-      const usable = trackWidth - THUMB_SIZE;
-      if (usable <= 0) return 50;
-      const clamped = Math.max(0, Math.min(x - TRACK_PADDING, usable));
-      return Math.round((clamped / usable) * 100);
-    },
-    [trackWidth]
-  );
 
   const triggerHaptic = useCallback(() => {
     if (Platform.OS !== 'web') {
@@ -45,12 +44,12 @@ export function MoneyShotSlider({ value, onChange }: Props) {
   const gesture = Gesture.Pan()
     .onStart((e) => {
       scale.value = withSpring(1.3);
-      const val = clampValue(e.x);
+      const val = clampValue(e.x, trackWidth);
       runOnJS(onChange)(val);
       runOnJS(triggerHaptic)();
     })
     .onUpdate((e) => {
-      const val = clampValue(e.x);
+      const val = clampValue(e.x, trackWidth);
       runOnJS(onChange)(val);
     })
     .onEnd(() => {
@@ -156,7 +155,9 @@ const styles = StyleSheet.create({
     borderRadius: TRACK_HEIGHT / 2,
     flexDirection: 'row',
     overflow: 'hidden',
-    opacity: 0.3,
+    // The yellow zones (Crave/Nirvana) vanish into the butter-yellow ground
+    // below ~0.7; keep the base track strong.
+    opacity: 0.7,
   },
   zoneSegment: {
     height: '100%',
@@ -173,10 +174,11 @@ const styles = StyleSheet.create({
     height: THUMB_SIZE,
     borderRadius: THUMB_SIZE / 2,
     borderWidth: 3,
+    // White border is fine here: it sits on the zone-colored thumb fill.
     borderColor: '#fff',
-    shadowColor: '#000',
+    shadowColor: colors.textPrimary,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.12,
     shadowRadius: 4,
     elevation: 5,
   },

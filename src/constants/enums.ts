@@ -36,13 +36,16 @@ export const COMMON_TOPPINGS = [
   'Burrata',
 ] as const;
 
+import { colors } from './theme';
+
+// Zone colors live in theme.ts so they move with the palette.
 export const MONEY_SHOT_ZONES = [
-  { label: 'Vom', min: 0, max: 16, color: '#8B0000' },
-  { label: 'Regret', min: 17, max: 33, color: '#D32F2F' },
-  { label: 'Fine', min: 34, max: 50, color: '#FF9800' },
-  { label: 'Crave', min: 51, max: 67, color: '#FFC107' },
-  { label: 'Bliss', min: 68, max: 84, color: '#8BC34A' },
-  { label: 'Nirvana', min: 85, max: 100, color: '#FFD700' },
+  { label: 'Vom', min: 0, max: 16, color: colors.zoneVom },
+  { label: 'Regret', min: 17, max: 33, color: colors.zoneRegret },
+  { label: 'Fine', min: 34, max: 50, color: colors.zoneFine },
+  { label: 'Crave', min: 51, max: 67, color: colors.zoneCrave },
+  { label: 'Bliss', min: 68, max: 84, color: colors.zoneBliss },
+  { label: 'Nirvana', min: 85, max: 100, color: colors.zoneNirvana },
 ] as const;
 
 export function getZoneForScore(score: number) {

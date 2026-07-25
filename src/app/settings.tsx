@@ -1,17 +1,91 @@
-import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, StyleSheet, Pressable, Alert, Share, Text as RNText } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQueryClient } from '@tanstack/react-query';
+import * as Notifications from 'expo-notifications';
+import {
+  Host,
+  Form,
+  Section,
+  Button,
+  Text,
+  Toggle,
+  LabeledContent,
+} from '@expo/ui/swift-ui';
 import { useSessionStore } from '../state/session';
-import { colors, spacing, fontSize, radii } from '../constants/theme';
+import { signOut } from '../lib/auth';
+import { enableStreakReminders } from '../lib/notifications';
+import { useEnsureProfile, useSaveProfile, useAchievements } from '../hooks/use-profile';
+import { usePizzaLogs } from '../hooks/use-pizza-logs';
+import { colors, spacing, fontSize } from '../constants/theme';
 
 export default function Settings() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const clearSession = useSessionStore((s) => s.clearSession);
+  const email = useSessionStore((s) => s.email);
+  const isAnonymous = useSessionStore((s) => s.isAnonymous);
+  const cloudUnavailableReason = useSessionStore((s) => s.cloudUnavailableReason);
   const qc = useQueryClient();
+
+  const { profile, ensureProfile } = useEnsureProfile();
+  const { mutate: saveProfile } = useSaveProfile();
+  const { data: logs } = usePizzaLogs();
+  const { data: achievements } = useAchievements();
+
+  const [remindersOn, setRemindersOn] = useState(false);
+
+  const signedIn = !isAnonymous && !!email;
+
+  useEffect(() => {
+    Notifications.getAllScheduledNotificationsAsync()
+      .then((scheduled) => setRemindersOn(scheduled.length > 0))
+      .catch(() => {});
+  }, []);
+
+  const handleSignOut = async () => {
+    await signOut();
+    qc.clear();
+    // The root layout guard redirects once the session clears.
+  };
+
+  const handleShareToggle = (isOn: boolean) => {
+    const current = profile ?? ensureProfile();
+    saveProfile({ ...current, shareWithCommunity: isOn });
+  };
+
+  const handleRemindersToggle = async (isOn: boolean) => {
+    if (isOn) {
+      const granted = await enableStreakReminders();
+      setRemindersOn(granted);
+      if (!granted) {
+        Alert.alert(
+          'Notifications are off',
+          'Enable notifications for Gula in system settings to get streak reminders.'
+        );
+      }
+    } else {
+      await Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
+      setRemindersOn(false);
+    }
+  };
+
+  const handleExport = async () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      profile: profile ?? null,
+      logs: logs ?? [],
+      achievements: achievements ?? [],
+    };
+    try {
+      await Share.share({ message: JSON.stringify(payload, null, 2) });
+    } catch {
+      // User dismissed the share sheet, nothing to do.
+    }
+  };
 
   const handleClearData = () => {
     Alert.alert(
@@ -36,33 +110,63 @@ export default function Settings() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => router.back()} hitSlop={8}>
           <Ionicons name="arrow-back" size={28} color={colors.textPrimary} />
         </Pressable>
-        <Text style={styles.title}>Settings</Text>
+        <RNText style={styles.title}>Settings</RNText>
         <View style={{ width: 28 }} />
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account</Text>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>Status</Text>
-          <Text style={styles.rowValue}>Local (no account yet)</Text>
-        </View>
-      </View>
+      <Host style={styles.host} useViewportSizeMeasurement>
+        <Form>
+          <Section
+            title="Account"
+            footer={
+              cloudUnavailableReason ? (
+                <Text>
+                  Cloud sync is not enabled yet, so your data lives on this device for now.
+                </Text>
+              ) : undefined
+            }
+          >
+            <LabeledContent label="Status">
+              <Text>{signedIn ? email : 'Anonymous'}</Text>
+            </LabeledContent>
+            {signedIn ? (
+              <Button label="Sign out" role="destructive" onPress={handleSignOut} />
+            ) : (
+              <Button label="Save your account" onPress={() => router.push('/sign-in')} />
+            )}
+          </Section>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Data</Text>
-        <Pressable style={styles.dangerRow} onPress={handleClearData}>
-          <Ionicons name="trash-outline" size={20} color={colors.danger} />
-          <Text style={styles.dangerText}>Clear all data</Text>
-        </Pressable>
-      </View>
+          <Section
+            title="Community"
+            footer={<Text>Sharing is opt-in. Only shared logs appear to other pizza people.</Text>}
+          >
+            <Toggle
+              label="Share my logs with the community"
+              isOn={profile?.shareWithCommunity ?? false}
+              onIsOnChange={handleShareToggle}
+            />
+          </Section>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Gula v1.0.0</Text>
-        <Text style={styles.footerText}>Built with Expo</Text>
-      </View>
+          <Section
+            title="Notifications"
+            footer={<Text>A weekly nudge so your streak never dies of neglect.</Text>}
+          >
+            <Toggle
+              label="Weekly streak reminder"
+              isOn={remindersOn}
+              onIsOnChange={(isOn) => void handleRemindersToggle(isOn)}
+            />
+          </Section>
+
+          <Section title="Data" footer={<Text>Gula v1.0.0, built with Expo</Text>}>
+            <Button label="Export my data" onPress={() => void handleExport()} />
+            <Button label="Clear all data" role="destructive" onPress={handleClearData} />
+          </Section>
+        </Form>
+      </Host>
     </View>
   );
 }
@@ -77,68 +181,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.sm,
   },
   title: {
     fontSize: fontSize.lg,
     fontWeight: '700',
     color: colors.textPrimary,
   },
-  section: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.xl,
-  },
-  sectionTitle: {
-    fontSize: fontSize.xs,
-    fontWeight: '700',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.bgCard,
-    padding: spacing.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  rowLabel: {
-    fontSize: fontSize.md,
-    color: colors.textPrimary,
-  },
-  rowValue: {
-    fontSize: fontSize.md,
-    color: colors.textMuted,
-  },
-  dangerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.bgCard,
-    padding: spacing.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.danger + '30',
-  },
-  dangerText: {
-    fontSize: fontSize.md,
-    color: colors.danger,
-    fontWeight: '600',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 60,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  footerText: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
+  host: {
+    flex: 1,
   },
 });

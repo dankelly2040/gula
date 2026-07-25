@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { colors, spacing, fontSize, radii } from '../../constants/theme';
 export default function Rate() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { editId } = useLocalSearchParams<{ editId?: string }>();
   const moneyShot = useDraftLogStore((s) => s.moneyShot);
   const setMoneyShot = useDraftLogStore((s) => s.setMoneyShot);
   const subScores = useDraftLogStore((s) => s.subScores);
@@ -146,10 +147,16 @@ export default function Rate() {
       <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing.lg }]}>
         <Pressable
           style={styles.nextButton}
-          onPress={() => router.push('/log/details')}
+          onPress={() =>
+            router.push(
+              editId
+                ? { pathname: '/log/details', params: { editId } }
+                : '/log/details'
+            )
+          }
         >
           <Text style={styles.nextButtonText}>Next: Details</Text>
-          <Ionicons name="arrow-forward" size={20} color={colors.textPrimary} />
+          <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
         </Pressable>
       </View>
     </View>
@@ -251,7 +258,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   nextButtonText: {
-    color: colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: fontSize.lg,
     fontWeight: '700',
   },

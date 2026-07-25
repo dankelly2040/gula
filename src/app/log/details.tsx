@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,13 +7,19 @@ import {
   ScrollView,
   TextInput,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Host, Picker, Text as NativeText } from '@expo/ui/swift-ui';
+import { frame, pickerStyle, tag, tint } from '@expo/ui/swift-ui/modifiers';
 import { useDraftLogStore } from '../../state/draft-log';
-import { useSaveLog } from '../../hooks/use-pizza-logs';
+import { useSaveLog, useUpdateLog, usePizzaLogs } from '../../hooks/use-pizza-logs';
+import { useProfile } from '../../hooks/use-profile';
 import { computePizzaScore, computeExperienceScore } from '../../db/types';
 import type { PizzaLog } from '../../db/types';
+import { generateId } from '../../lib/id';
+import { getCurrentCoords } from '../../lib/location';
+import { SpotPicker } from '../../components/spot-picker';
 import {
   PIZZA_STYLES,
   PIZZA_FORMATS,
@@ -22,20 +29,122 @@ import {
 } from '../../constants/enums';
 import { colors, spacing, fontSize, radii } from '../../constants/theme';
 
+// Sentinel tag for the "no selection" row in menu pickers. Native `tag`
+// values must be string | number, so null is represented explicitly.
+const UNSET_TAG = '__unset__';
+
+/**
+ * Native SwiftUI picker for a single-select optional tag. Segmented for
+ * short option sets, menu (with an explicit "Not set" row so the field can
+ * be cleared) when labels don't fit as segments. Fields start unset; the
+ * first choice selects a value.
+ */
+function NativeTagPicker<T extends string>({
+  label,
+  options,
+  selection,
+  onSelect,
+  variant,
+}: {
+  label: string;
+  options: readonly T[];
+  selection: T | null;
+  onSelect: (value: T | null) => void;
+  variant: 'segmented' | 'menu';
+}) {
+  const isMenu = variant === 'menu';
+  return (
+    // Segmented controls hug their frame tighter than the menu picker, which
+    // makes the label look glued to them; the extra top margin restores the
+    // same label-to-control gap as every other section.
+    <Host matchContents={{ vertical: true }} style={isMenu ? undefined : { marginTop: spacing.xs }}>
+      <Picker<string | null>
+        label={label}
+        selection={selection ?? (isMenu ? UNSET_TAG : null)}
+        onSelectionChange={(value) => {
+          onSelect(value === UNSET_TAG || value === null ? null : (value as T));
+        }}
+        modifiers={
+          isMenu
+            ? [pickerStyle('menu'), tint(colors.brand), frame({ maxWidth: Infinity, alignment: 'leading' })]
+            : [pickerStyle('segmented'), tint(colors.brand)]
+        }
+      >
+        {isMenu ? <NativeText modifiers={[tag(UNSET_TAG)]}>Not set</NativeText> : null}
+        {options.map((option) => (
+          <NativeText key={option} modifiers={[tag(option)]}>
+            {option}
+          </NativeText>
+        ))}
+      </Picker>
+    </Host>
+  );
+}
+
 export default function Details() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { editId } = useLocalSearchParams<{ editId?: string }>();
   const draft = useDraftLogStore();
-  const { mutate: saveLog } = useSaveLog();
+  const saveLog = useSaveLog();
+  const updateLog = useUpdateLog();
+  const { data: logs } = usePizzaLogs();
+  const { data: profile } = useProfile();
 
-  const handleSave = () => {
+  // Capture location automatically so spots and the map need no extra step.
+  useEffect(() => {
+    if (useDraftLogStore.getState().lat !== null) return;
+    void getCurrentCoords().then((c) => {
+      if (c) useDraftLogStore.getState().setCoords(c.lat, c.lng);
+    });
+  }, []);
+
+  const isSaving = saveLog.isPending || updateLog.isPending;
+
+  const handleSave = async () => {
+    if (isSaving) return;
+
+    if (editId) {
+      const original = logs?.find((l) => l.id === editId);
+      if (!original) return;
+      // Keep identity, timestamp, points, and remote photo; take edits from the draft.
+      const updated: PizzaLog = {
+        ...original,
+        spotId: draft.spotId,
+        spotName: draft.spotName,
+        photoUri: draft.photoUri,
+        moneyShot: draft.moneyShot,
+        pizzaScore: computePizzaScore(draft.subScores),
+        experienceScore: computeExperienceScore(draft.subScores),
+        sendFriend: draft.sendFriend,
+        subScores: { ...draft.subScores },
+        tags: { ...draft.tags },
+        notes: draft.notes,
+        lat: draft.lat,
+        lng: draft.lng,
+      };
+      try {
+        await updateLog.mutateAsync(updated);
+      } catch {
+        return;
+      }
+      draft.reset();
+      if (router.canDismiss()) {
+        router.dismiss();
+      } else {
+        router.back();
+      }
+      return;
+    }
+
     const log: PizzaLog = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 9),
+      id: generateId(),
       userId: 'local',
       spotId: draft.spotId,
       spotName: draft.spotName,
       timestamp: new Date().toISOString(),
       photoUri: draft.photoUri,
+      photoUrl: null,
       moneyShot: draft.moneyShot,
       pizzaScore: computePizzaScore(draft.subScores),
       experienceScore: computeExperienceScore(draft.subScores),
@@ -43,16 +152,23 @@ export default function Details() {
       subScores: { ...draft.subScores },
       tags: { ...draft.tags },
       notes: draft.notes,
-      pointsEarned: 10,
+      pointsEarned: 0, // computed by useSaveLog
+      lat: draft.lat,
+      lng: draft.lng,
+      isPublic: profile?.shareWithCommunity ?? false,
+      updatedAt: new Date().toISOString(),
     };
 
-    saveLog(log, {
-      onSuccess: () => {
-        draft.reset();
-        router.dismissAll();
-        router.push('/reward');
-      },
-    });
+    let rewards;
+    try {
+      rewards = await saveLog.mutateAsync(log);
+    } catch {
+      return;
+    }
+    draft.reset();
+    router.replace(
+      `/reward?points=${rewards.points}&first=${rewards.isFirstLog ? 1 : 0}&achievements=${rewards.newAchievements.map((a) => a.type).join(',')}`
+    );
   };
 
   const toggleTopping = (topping: string) => {
@@ -82,57 +198,29 @@ export default function Details() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Spot name */}
+        {/* Spot */}
         <Text style={styles.sectionLabel}>Where was this?</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Pizza spot name"
-          placeholderTextColor={colors.textMuted}
-          value={draft.spotName ?? ''}
-          onChangeText={(text) => draft.setSpot(null, text || null)}
-        />
+        <SpotPicker />
 
         {/* Style */}
         <Text style={styles.sectionLabel}>Style</Text>
-        <View style={styles.chipRow}>
-          {PIZZA_STYLES.map((s) => (
-            <Pressable
-              key={s}
-              style={[styles.chip, draft.tags.style === s && styles.chipActive]}
-              onPress={() => draft.setTag('style', draft.tags.style === s ? null : s)}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  draft.tags.style === s && styles.chipTextActive,
-                ]}
-              >
-                {s}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <NativeTagPicker
+          label="Style"
+          options={PIZZA_STYLES}
+          selection={draft.tags.style}
+          onSelect={(value) => draft.setTag('style', value)}
+          variant="menu"
+        />
 
         {/* Format */}
         <Text style={styles.sectionLabel}>Format</Text>
-        <View style={styles.chipRow}>
-          {PIZZA_FORMATS.map((f) => (
-            <Pressable
-              key={f}
-              style={[styles.chip, draft.tags.format === f && styles.chipActive]}
-              onPress={() => draft.setTag('format', draft.tags.format === f ? null : f)}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  draft.tags.format === f && styles.chipTextActive,
-                ]}
-              >
-                {f}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <NativeTagPicker
+          label="Format"
+          options={PIZZA_FORMATS}
+          selection={draft.tags.format}
+          onSelect={(value) => draft.setTag('format', value)}
+          variant="segmented"
+        />
 
         {/* Toppings */}
         <Text style={styles.sectionLabel}>Toppings</Text>
@@ -160,49 +248,23 @@ export default function Details() {
 
         {/* Price tier */}
         <Text style={styles.sectionLabel}>Price</Text>
-        <View style={styles.chipRow}>
-          {PRICE_TIERS.map((p) => (
-            <Pressable
-              key={p}
-              style={[styles.chip, draft.tags.priceTier === p && styles.chipActive]}
-              onPress={() =>
-                draft.setTag('priceTier', draft.tags.priceTier === p ? null : p)
-              }
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  draft.tags.priceTier === p && styles.chipTextActive,
-                ]}
-              >
-                {p}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <NativeTagPicker
+          label="Price"
+          options={PRICE_TIERS}
+          selection={draft.tags.priceTier}
+          onSelect={(value) => draft.setTag('priceTier', value)}
+          variant="segmented"
+        />
 
         {/* Context */}
         <Text style={styles.sectionLabel}>Context</Text>
-        <View style={styles.chipRow}>
-          {CONTEXT_OPTIONS.map((c) => (
-            <Pressable
-              key={c}
-              style={[styles.chip, draft.tags.context === c && styles.chipActive]}
-              onPress={() =>
-                draft.setTag('context', draft.tags.context === c ? null : c)
-              }
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  draft.tags.context === c && styles.chipTextActive,
-                ]}
-              >
-                {c}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <NativeTagPicker
+          label="Context"
+          options={CONTEXT_OPTIONS}
+          selection={draft.tags.context}
+          onSelect={(value) => draft.setTag('context', value)}
+          variant="segmented"
+        />
 
         {/* Notes */}
         <Text style={styles.sectionLabel}>Notes</Text>
@@ -218,9 +280,11 @@ export default function Details() {
       </ScrollView>
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing.lg }]}>
-        <Pressable style={styles.saveButton} onPress={handleSave}>
-          <Ionicons name="checkmark-circle" size={24} color={colors.textPrimary} />
-          <Text style={styles.saveButtonText}>Save this slice</Text>
+        <Pressable style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
+          <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
+          <Text style={styles.saveButtonText}>
+            {editId ? 'Save changes' : 'Save this slice'}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -274,7 +338,7 @@ const styles = StyleSheet.create({
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: spacing.sm + spacing.xs,
   },
   chip: {
     backgroundColor: colors.bgCard,
@@ -300,7 +364,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   saveButton: {
-    backgroundColor: colors.green,
+    backgroundColor: colors.brand,
     borderRadius: radii.lg,
     paddingVertical: spacing.md,
     flexDirection: 'row',
@@ -309,7 +373,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   saveButtonText: {
-    color: colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: fontSize.lg,
     fontWeight: '700',
   },

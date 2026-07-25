@@ -1,20 +1,314 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  ActivityIndicator,
+  Linking,
+} from 'react-native';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing, fontSize } from '../../constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { SymbolView } from 'expo-symbols';
+import { AppleMaps } from 'expo-maps';
+import { useCurrentLocation, useDiscover, usePizzaPlaces } from '../../hooks/use-discover';
+import { useDraftLogStore } from '../../state/draft-log';
+import { getZoneForScore } from '../../constants/enums';
+import { colors, spacing, fontSize, radii } from '../../constants/theme';
+import type { PizzaLog, Spot } from '../../db/types';
+import type { PizzaPlace } from '../../lib/pizza-places';
+
+type ViewMode = 'map' | 'list';
+
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks}w ago`;
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatDistance(meters: number): string {
+  const miles = meters / 1609.34;
+  if (miles < 0.1) return `${Math.round(meters * 3.28084)} ft`;
+  return `${miles.toFixed(1)} mi`;
+}
 
 export default function Discover() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const [viewMode, setViewMode] = useState<ViewMode>('map');
+
+  const {
+    data: coords,
+    isLoading: locationLoading,
+    isRefetching: locationRetrying,
+    refetch: retryLocation,
+  } = useCurrentLocation();
+  const discover = useDiscover(coords);
+  const placesQuery = usePizzaPlaces(coords);
+
+  const logs: PizzaLog[] = discover.data?.logs ?? [];
+  const spots: Spot[] = discover.data?.spots ?? [];
+  const places: PizzaPlace[] = placesQuery.data ?? [];
+
+  const startLogAt = (place: PizzaPlace) => {
+    const draft = useDraftLogStore.getState();
+    draft.reset();
+    draft.setSpot(null, place.name);
+    draft.setCoords(place.lat, place.lng);
+    router.push('/log/capture');
+  };
+
+  const markers = useMemo<AppleMaps.Marker[]>(() => {
+    const spotMarkers = spots
+      .filter((s) => s.lat != null && s.lng != null)
+      .map((s) => ({
+        id: `spot:${s.id}`,
+        coordinates: { latitude: s.lat!, longitude: s.lng! },
+        title: s.name,
+        systemImage: 'fork.knife',
+        tintColor: colors.brand,
+      }));
+    const logMarkers = logs
+      .filter((l) => l.lat != null && l.lng != null)
+      .map((l) => {
+        const zone = getZoneForScore(l.moneyShot);
+        return {
+          id: `log:${l.id}`,
+          coordinates: { latitude: l.lat!, longitude: l.lng! },
+          title: `${l.spotName ?? 'Pizza'} · ${l.moneyShot} ${zone.label}`,
+          systemImage: 'flame.fill',
+          tintColor: zone.color,
+        };
+      });
+    // Suggested places are quieter than community spots on the map.
+    const placeMarkers = places.map((p, i) => ({
+      id: `place:${i}`,
+      coordinates: { latitude: p.lat, longitude: p.lng },
+      title: p.name,
+      systemImage: 'storefront',
+      tintColor: colors.textSecondary,
+    }));
+    return [...spotMarkers, ...logMarkers, ...placeMarkers];
+  }, [spots, logs, places]);
+
+  const renderBody = () => {
+    // Location resolving (the OS permission prompt appears over this).
+    if (locationLoading || locationRetrying) {
+      return (
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.brand} size="large" />
+          <Text style={styles.loadingText}>Finding great pizza near you</Text>
+        </View>
+      );
+    }
+
+    // Permission denied or location unavailable.
+    if (coords == null) {
+      return (
+        <View style={styles.centered}>
+          <SymbolView
+            name="location.fill"
+            size={56}
+            tintColor={colors.textMuted}
+            style={styles.emptyIcon}
+          />
+          <Text style={styles.emptyTitle}>Find pizza near you</Text>
+          <Text style={styles.emptyText}>
+            Gula uses your location to surface public logs and spots worth trying nearby. We only
+            check while you have Discover open.
+          </Text>
+          <Pressable style={styles.primaryButton} onPress={() => retryLocation()}>
+            <Text style={styles.primaryButtonText}>Enable location</Text>
+          </Pressable>
+          <Pressable onPress={() => Linking.openSettings()}>
+            <Text style={styles.settingsLink}>Denied it earlier? Open settings</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    // Nearby data loading.
+    if (discover.isLoading && placesQuery.isLoading) {
+      return (
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.brand} size="large" />
+          <Text style={styles.loadingText}>Checking what the community is eating</Text>
+        </View>
+      );
+    }
+
+    // Nothing nearby (also covers fetch errors, which fall back to empty lists).
+    if (logs.length === 0 && spots.length === 0 && places.length === 0) {
+      return (
+        <View style={styles.centered}>
+          <SymbolView
+            name="fork.knife.circle"
+            size={56}
+            tintColor={colors.textMuted}
+            style={styles.emptyIcon}
+          />
+          <Text style={styles.emptyTitle}>No pizza logged near you yet, be the first</Text>
+          <Text style={styles.emptyText}>
+            Log a slice and put your neighborhood on the map.
+          </Text>
+          <Pressable style={styles.primaryButton} onPress={() => router.push('/log/capture')}>
+            <Text style={styles.primaryButtonText}>Log a slice</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    if (viewMode === 'map') {
+      return (
+        <View style={styles.mapWrap}>
+          <AppleMaps.View
+            style={styles.map}
+            cameraPosition={{
+              coordinates: { latitude: coords.lat, longitude: coords.lng },
+              zoom: 13,
+            }}
+            markers={markers}
+            properties={{ isMyLocationEnabled: true }}
+            uiSettings={{ myLocationButtonEnabled: true, compassEnabled: true }}
+            onMarkerClick={(marker) => {
+              if (marker.id?.startsWith('spot:')) {
+                router.push(`/spot/${marker.id.slice(5)}`);
+              } else if (marker.id?.startsWith('place:')) {
+                const place = places[Number(marker.id.slice(6))];
+                if (place) startLogAt(place);
+              }
+            }}
+          />
+        </View>
+      );
+    }
+
+    return (
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+      >
+        {logs.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Nearby logs</Text>
+            {logs.map((log) => {
+              const zone = getZoneForScore(log.moneyShot);
+              return (
+                <View key={log.id} style={styles.row}>
+                  <View style={styles.rowInfo}>
+                    <Text style={styles.rowTitle} numberOfLines={1}>
+                      {log.spotName ?? 'Unknown spot'}
+                    </Text>
+                    <Text style={styles.rowSubtitle}>{relativeTime(log.timestamp)}</Text>
+                  </View>
+                  <View style={[styles.scoreBadge, { backgroundColor: zone.color + '20' }]}>
+                    <Text style={[styles.scoreValue, { color: zone.color }]}>
+                      {log.moneyShot}
+                    </Text>
+                    <Text style={[styles.scoreLabel, { color: zone.color }]}>{zone.label}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </>
+        )}
+
+        {spots.length > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, logs.length > 0 && styles.sectionTitleSpaced]}>
+              Spots to try
+            </Text>
+            {spots.map((spot) => (
+              <Pressable
+                key={spot.id}
+                style={styles.row}
+                onPress={() => router.push(`/spot/${spot.id}`)}
+              >
+                <View style={styles.rowInfo}>
+                  <Text style={styles.rowTitle} numberOfLines={1}>
+                    {spot.name}
+                  </Text>
+                  {spot.address ? (
+                    <Text style={styles.rowSubtitle} numberOfLines={1}>
+                      {spot.address}
+                    </Text>
+                  ) : null}
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </Pressable>
+            ))}
+          </>
+        )}
+
+        {places.length > 0 && (
+          <>
+            <Text
+              style={[
+                styles.sectionTitle,
+                (logs.length > 0 || spots.length > 0) && styles.sectionTitleSpaced,
+              ]}
+            >
+              Pizza places nearby
+            </Text>
+            {places.map((place, i) => (
+              <Pressable key={`${place.name}:${i}`} style={styles.row} onPress={() => startLogAt(place)}>
+                <View style={styles.rowInfo}>
+                  <Text style={styles.rowTitle} numberOfLines={1}>
+                    {place.name}
+                  </Text>
+                  <Text style={styles.rowSubtitle} numberOfLines={1}>
+                    {formatDistance(place.distanceMeters)}
+                    {place.address ? ` · ${place.address}` : ''}
+                  </Text>
+                </View>
+                <SymbolView name="plus.circle.fill" size={22} tintColor={colors.brand} />
+              </Pressable>
+            ))}
+          </>
+        )}
+      </ScrollView>
+    );
+  };
+
+  const showToggle =
+    coords != null &&
+    !locationLoading &&
+    !discover.isLoading &&
+    (logs.length > 0 || spots.length > 0 || places.length > 0);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
       <Text style={styles.title}>Discover</Text>
-      <View style={styles.empty}>
-        <Text style={styles.emptyIcon}>🗺️</Text>
-        <Text style={styles.emptyTitle}>Coming soon</Text>
-        <Text style={styles.emptyText}>
-          Nearby pizza spots and public logs will show up here once the community starts logging.
-        </Text>
-      </View>
+
+      {showToggle && (
+        <View style={styles.segmentRow}>
+          {(['map', 'list'] as const).map((mode) => (
+            <Pressable
+              key={mode}
+              style={[styles.segment, viewMode === mode && styles.segmentActive]}
+              onPress={() => setViewMode(mode)}
+            >
+              <Text
+                style={[styles.segmentText, viewMode === mode && styles.segmentTextActive]}
+              >
+                {mode === 'map' ? 'Map' : 'List'}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {renderBody()}
     </View>
   );
 }
@@ -29,16 +323,46 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xxl,
     fontWeight: '800',
     color: colors.textPrimary,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
-  empty: {
+  segmentRow: {
+    flexDirection: 'row',
+    backgroundColor: colors.bgCard,
+    borderRadius: radii.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 3,
+    marginBottom: spacing.md,
+  },
+  segment: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderRadius: radii.full,
+  },
+  segmentActive: {
+    backgroundColor: colors.brand + '20',
+  },
+  segmentText: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  segmentTextActive: {
+    color: colors.brand,
+  },
+  centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingBottom: 100,
   },
+  loadingText: {
+    marginTop: spacing.md,
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+  },
   emptyIcon: {
-    fontSize: 64,
     marginBottom: spacing.md,
   },
   emptyTitle: {
@@ -46,11 +370,95 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   emptyText: {
     fontSize: fontSize.md,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
+    marginBottom: spacing.lg,
+  },
+  primaryButton: {
+    backgroundColor: colors.brand,
+    borderRadius: radii.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+  },
+  primaryButtonText: {
+    // White is allowed here: it sits on the brand fill.
+    color: '#FFFDF8',
+    fontSize: fontSize.lg,
+    fontWeight: '700',
+  },
+  settingsLink: {
+    marginTop: spacing.md,
+    fontSize: fontSize.sm,
+    color: colors.brand,
+    fontWeight: '600',
+  },
+  mapWrap: {
+    flex: 1,
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.md,
+  },
+  map: {
+    flex: 1,
+  },
+  listContent: {
+    paddingBottom: spacing.xxl,
+  },
+  sectionTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  sectionTitleSpaced: {
+    marginTop: spacing.lg,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.bgCard,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  rowInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  rowTitle: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  rowSubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+  },
+  scoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radii.sm,
+  },
+  scoreValue: {
+    fontSize: fontSize.md,
+    fontWeight: '800',
+  },
+  scoreLabel: {
+    fontSize: fontSize.xs,
+    fontWeight: '600',
   },
 });

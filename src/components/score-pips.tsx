@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: radii.sm,
-    backgroundColor: colors.bgInput,
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
