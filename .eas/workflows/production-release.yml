@@ -1,0 +1,15 @@
+# Manual trigger: production build, then submit to TestFlight / App Store.
+name: Production release
+on:
+  workflow_dispatch: {}
+jobs:
+  build_ios_production:
+    type: build
+    params:
+      platform: ios
+      profile: production
+  submit_ios:
+    needs: [build_ios_production]
+    type: submit
+    params:
+      build_id: ${{ needs.build_ios_production.outputs.build_id }}

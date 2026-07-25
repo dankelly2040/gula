@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { PillButton } from '../../components/sticker';
 import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
 import type { PizzaLog, Spot } from '../../db/types';
 import type { PizzaPlace } from '../../lib/pizza-places';
+import { useObserve } from 'expo-observe';
 
 type ViewMode = 'map' | 'list';
 
@@ -44,6 +45,11 @@ function formatDistance(meters: number): string {
 }
 
 export default function Discover() {
+  const { markInteractive } = useObserve();
+  useEffect(() => {
+    markInteractive();
+  }, [markInteractive]);
+
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>('map');

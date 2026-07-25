@@ -1,0 +1,10 @@
+# Manual trigger: fresh iOS development build for the dev client.
+name: Development build
+on:
+  workflow_dispatch: {}
+jobs:
+  build_ios_development:
+    type: build
+    params:
+      platform: ios
+      profile: development

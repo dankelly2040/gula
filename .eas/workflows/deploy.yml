@@ -1,0 +1,31 @@
+# On every push to main: publish an OTA update when the native fingerprint
+# already has a compatible preview build, otherwise build new natives.
+name: Deploy preview
+on:
+  push:
+    branches: ['main']
+concurrency:
+  cancel_in_progress: true
+  group: ${{ workflow.filename }}-${{ github.ref }}
+jobs:
+  fingerprint:
+    type: fingerprint
+  get_ios_build:
+    needs: [fingerprint]
+    type: get-build
+    params:
+      fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
+      profile: preview
+  build_ios_preview:
+    needs: [get_ios_build]
+    if: ${{ !needs.get_ios_build.outputs.build_id }}
+    type: build
+    params:
+      platform: ios
+      profile: preview
+  publish_preview_update:
+    needs: [get_ios_build]
+    if: ${{ needs.get_ios_build.outputs.build_id }}
+    type: update
+    params:
+      branch: preview

@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, FlatList } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { useProfile } from '../../hooks/use-profile';
 import { PizzaCard } from '../../components/pizza-card';
 import { PillButton, StickerChip } from '../../components/sticker';
 import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
+import { useObserve } from 'expo-observe';
 
 type SortKey = 'moneyShot' | 'pizzaScore' | 'date';
 
@@ -17,6 +18,11 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 ];
 
 export default function Activity() {
+  const { markInteractive } = useObserve();
+  useEffect(() => {
+    markInteractive();
+  }, [markInteractive]);
+
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [sortBy, setSortBy] = useState<SortKey>('moneyShot');

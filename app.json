@@ -92,6 +92,12 @@
         "projectId": "215878b4-2091-4ccb-8a6f-6545863486f0"
       }
     },
-    "owner": "dannymanning"
+    "owner": "dannymanning",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/215878b4-2091-4ccb-8a6f-6545863486f0"
+    }
   }
 }

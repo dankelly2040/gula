@@ -4,8 +4,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { PillButton } from '../../components/sticker';
 import { colors, spacing, fontSize } from '../../constants/theme';
+import { useEffect } from 'react';
+import { useObserve } from 'expo-observe';
 
 export default function Welcome() {
+  const { markInteractive } = useObserve();
+  useEffect(() => {
+    markInteractive();
+  }, [markInteractive]);
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
 

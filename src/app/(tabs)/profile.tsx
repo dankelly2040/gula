@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,8 +20,14 @@ import { ACHIEVEMENT_DEFS, type AchievementType } from '../../db/types';
 import { PIZZA_STYLES, type PizzaStyle } from '../../constants/enums';
 import { PillButton, StickerChip } from '../../components/sticker';
 import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
+import { useObserve } from 'expo-observe';
 
 export default function Profile() {
+  const { markInteractive } = useObserve();
+  useEffect(() => {
+    markInteractive();
+  }, [markInteractive]);
+
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: profile } = useProfile();
