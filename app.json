@@ -11,7 +11,10 @@
     },
     "ios": {
       "bundleIdentifier": "com.dannymanning.gula",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
