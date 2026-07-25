@@ -24,7 +24,8 @@ export type PizzaLog = {
   spotId: string | null;
   spotName: string | null;
   timestamp: string;
-  photoUri: string | null;
+  photoUri: string | null; // local file, kept for instant rendering
+  photoUrl: string | null; // remote URL once uploaded
   moneyShot: number; // 0-100
   pizzaScore: number | null; // 0-100 computed
   experienceScore: number | null; // 0-100 computed
@@ -33,6 +34,10 @@ export type PizzaLog = {
   tags: PizzaTags;
   notes: string;
   pointsEarned: number;
+  lat: number | null;
+  lng: number | null;
+  isPublic: boolean;
+  updatedAt: string;
 };
 
 export type Spot = {
@@ -43,10 +48,25 @@ export type Spot = {
   lng: number | null;
 };
 
+// `symbol` is an SF Symbol name rendered via expo-symbols; `emoji` is kept
+// for plain-text contexts (share messages, exports).
+export const ACHIEVEMENT_DEFS = {
+  first_log: { title: 'First slice', emoji: '🍕', symbol: 'star.fill', description: 'Logged your first pizza' },
+  five_logs: { title: 'Regular', emoji: '🔥', symbol: 'flame.fill', description: 'Logged 5 pizzas' },
+  ten_logs: { title: 'Connoisseur', emoji: '🎖️', symbol: 'medal.fill', description: 'Logged 10 pizzas' },
+  twenty_five_logs: { title: 'Obsessive', emoji: '👑', symbol: 'crown.fill', description: 'Logged 25 pizzas' },
+  fifty_logs: { title: 'Legend', emoji: '🏆', symbol: 'trophy.fill', description: 'Logged 50 pizzas' },
+  style_explorer: { title: 'Style explorer', emoji: '🧭', symbol: 'safari.fill', description: 'Logged 3 different styles' },
+  streak_3: { title: 'On a roll', emoji: '⚡', symbol: 'bolt.fill', description: '3-week logging streak' },
+  nirvana: { title: 'Nirvana', emoji: '✨', symbol: 'sparkles', description: 'Scored a pizza 85 or higher' },
+} as const;
+
+export type AchievementType = keyof typeof ACHIEVEMENT_DEFS;
+
 export type Achievement = {
   id: string;
   userId: string;
-  type: string;
+  type: AchievementType;
   earnedAt: string;
 };
 

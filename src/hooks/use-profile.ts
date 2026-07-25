@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getProfile, saveProfile } from '../db/local-store';
+import { getProfile, saveProfile, getAchievements, enqueueSyncOp } from '../db/local-store';
+import { syncWithCloud } from '../db/sync';
 import type { UserProfile } from '../db/types';
+import { useSessionStore } from '../state/session';
 
 export function useProfile() {
   return useQuery({
@@ -9,10 +11,21 @@ export function useProfile() {
   });
 }
 
+export function useAchievements() {
+  return useQuery({
+    queryKey: ['achievements'],
+    queryFn: getAchievements,
+  });
+}
+
 export function useSaveProfile() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: saveProfile,
+    mutationFn: async (profile: UserProfile) => {
+      await saveProfile(profile);
+      await enqueueSyncOp({ kind: 'upsert-profile' });
+      void syncWithCloud();
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['profile'] }),
   });
 }
@@ -20,11 +33,12 @@ export function useSaveProfile() {
 export function useEnsureProfile() {
   const { data: profile } = useProfile();
   const { mutate: save } = useSaveProfile();
+  const userId = useSessionStore((s) => s.userId);
 
   const ensureProfile = (): UserProfile => {
     if (profile) return profile;
     const newProfile: UserProfile = {
-      id: generateId(),
+      id: userId ?? 'local',
       displayName: null,
       avatarUrl: null,
       favoriteStyle: null,
@@ -39,8 +53,4 @@ export function useEnsureProfile() {
   };
 
   return { profile, ensureProfile };
-}
-
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
 }

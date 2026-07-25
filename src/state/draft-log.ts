@@ -11,6 +11,8 @@ type DraftLogState = {
   spotId: string | null;
   spotName: string | null;
   notes: string;
+  lat: number | null;
+  lng: number | null;
 
   setPhoto: (uri: string | null) => void;
   setMoneyShot: (value: number) => void;
@@ -19,6 +21,7 @@ type DraftLogState = {
   setTag: <K extends keyof PizzaTags>(key: K, value: PizzaTags[K]) => void;
   setSpot: (id: string | null, name: string | null) => void;
   setNotes: (text: string) => void;
+  setCoords: (lat: number | null, lng: number | null) => void;
   reset: () => void;
 };
 
@@ -49,6 +52,8 @@ export const useDraftLogStore = create<DraftLogState>((set) => ({
   spotId: null,
   spotName: null,
   notes: '',
+  lat: null,
+  lng: null,
 
   setPhoto: (uri) => set({ photoUri: uri }),
   setMoneyShot: (value) => set({ moneyShot: value }),
@@ -58,6 +63,7 @@ export const useDraftLogStore = create<DraftLogState>((set) => ({
   setTag: (key, value) => set((s) => ({ tags: { ...s.tags, [key]: value } })),
   setSpot: (id, name) => set({ spotId: id, spotName: name }),
   setNotes: (text) => set({ notes: text }),
+  setCoords: (lat, lng) => set({ lat, lng }),
   reset: () =>
     set({
       photoUri: null,
@@ -68,5 +74,7 @@ export const useDraftLogStore = create<DraftLogState>((set) => ({
       spotId: null,
       spotName: null,
       notes: '',
+      lat: null,
+      lng: null,
     }),
 }));
