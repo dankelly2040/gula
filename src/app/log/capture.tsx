@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { goBack } from '../../lib/nav';
@@ -16,7 +16,67 @@ import {
 import { useDraftLogStore } from '../../state/draft-log';
 import { colors, spacing, fontSize, radii } from '../../constants/theme';
 
-const WHITE = '#FFFFFF';
+// Sticker-card chrome, scoped to the capture moment: mustard frame, hard
+// offset shadows, chunky white utility circles, one big pill action.
+const FRAME = '#EBC257';
+const INK = colors.textPrimary;
+const WHITE = '#FFFEF7';
+
+function CircleButton({
+  onPress,
+  children,
+}: {
+  onPress: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Pressable onPress={onPress} hitSlop={6}>
+      {({ pressed }) => (
+        <View style={[styles.circleButton, pressed && styles.pressedDown]}>{children}</View>
+      )}
+    </Pressable>
+  );
+}
+
+function PillButton({
+  onPress,
+  disabled,
+  icon,
+  label,
+}: {
+  onPress: () => void;
+  disabled?: boolean;
+  icon: string;
+  label: string;
+}) {
+  return (
+    <Pressable onPress={onPress} disabled={disabled}>
+      {({ pressed }) => (
+        <View
+          style={[styles.pillButton, pressed && styles.pressedDown, disabled && styles.pillDisabled]}
+        >
+          <SymbolView name={icon as never} size={18} tintColor={WHITE} />
+          <Text style={styles.pillText}>{label}</Text>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+function StickerCard({ badge, children }: { badge: string; children: ReactNode }) {
+  return (
+    <View style={styles.card}>
+      <View style={styles.viewport}>{children}</View>
+      {/* playful corner confetti, echoing the reward burst */}
+      <View style={[styles.dot, styles.dotTopLeft]} />
+      <View style={[styles.dot, styles.dotBottomRight]} />
+      <View style={styles.sprinkle} />
+      <View style={styles.badge}>
+        <Text style={styles.badgeText}>{badge}</Text>
+      </View>
+    </View>
+  );
+}
 
 export default function Capture() {
   const router = useRouter();
@@ -82,374 +142,301 @@ export default function Capture() {
     setPhoto(null);
   };
 
-  // Preview state: photo taken or picked.
-  if (photoUri) {
-    return (
-      <View style={[styles.previewScreen, { paddingTop: insets.top + spacing.md }]}>
-        <View style={styles.previewHeader}>
-          <Pressable onPress={handleClose} hitSlop={8}>
-            <Ionicons name="close" size={28} color={colors.textPrimary} />
-          </Pressable>
-          <Text style={styles.previewTitle}>Snap your slice</Text>
-          <View style={{ width: 28 }} />
-        </View>
-
-        <View style={styles.previewContainer}>
-          <Image source={{ uri: photoUri }} style={styles.preview} contentFit="cover" />
-          <Pressable style={styles.retakeButton} onPress={handleRetake}>
-            <Ionicons name="refresh" size={20} color={colors.textPrimary} />
-            <Text style={styles.retakeText}>Retake</Text>
-          </Pressable>
-        </View>
-
-        <View style={[styles.previewBottom, { paddingBottom: insets.bottom + spacing.lg }]}>
-          <Pressable style={styles.nextButton} onPress={() => router.push('/log/rate')}>
-            <Text style={styles.nextButtonText}>Next: Rate it</Text>
-            <Ionicons name="arrow-forward" size={20} color={WHITE} />
-          </Pressable>
-        </View>
-      </View>
-    );
-  }
-
   // Waiting for the permission response (system prompt may be up).
-  if (!permission || (!permission.granted && permission.canAskAgain)) {
-    return <View style={styles.previewScreen} />;
+  if (!permission || (!permission.granted && permission.canAskAgain && !photoUri)) {
+    return <View style={styles.screen} />;
   }
 
   // Permission denied, or the camera failed to start (for example on a simulator).
-  if (!permission.granted || mountError) {
-    const denied = !permission.granted;
-    return (
-      <View style={[styles.previewScreen, { paddingTop: insets.top + spacing.md }]}>
-        <View style={styles.previewHeader}>
-          <Pressable onPress={handleClose} hitSlop={8}>
-            <Ionicons name="close" size={28} color={colors.textPrimary} />
-          </Pressable>
-          <Text style={styles.previewTitle}>Snap your slice</Text>
-          <View style={{ width: 28 }} />
-        </View>
+  const cameraBlocked = !photoUri && (!permission.granted || mountError !== null);
 
-        <View style={styles.fallbackContent}>
-          <Ionicons name="camera-outline" size={56} color={colors.textMuted} />
-          <Text style={styles.fallbackTitle}>
-            {denied ? 'Camera access needed' : 'Camera unavailable'}
-          </Text>
-          <Text style={styles.fallbackBody}>
-            {denied
-              ? 'Gula uses the camera to snap your slice so you can rate it. Allow camera access in settings, or pick a photo from your library instead.'
-              : 'The camera could not start on this device. Pick a photo from your library instead, or skip for now.'}
-          </Text>
-          {denied && (
-            <Pressable onPress={() => Linking.openSettings()} hitSlop={8}>
-              <Text style={styles.settingsLink}>Open settings</Text>
-            </Pressable>
-          )}
-
-          <Pressable style={styles.libraryCard} onPress={pickFromLibrary}>
-            <Ionicons name="images" size={40} color={colors.brand} />
-            <Text style={styles.libraryCardText}>Choose from library</Text>
-          </Pressable>
-        </View>
-
-        <View style={[styles.previewBottom, { paddingBottom: insets.bottom + spacing.lg }]}>
-          <Pressable style={styles.nextButton} onPress={handleSkip}>
-            <Text style={styles.nextButtonText}>Skip photo</Text>
-            <Ionicons name="arrow-forward" size={20} color={WHITE} />
-          </Pressable>
-        </View>
-      </View>
-    );
-  }
-
-  // Live camera.
   return (
-    <View style={styles.cameraScreen}>
-      <CameraView
-        ref={cameraRef}
-        style={StyleSheet.absoluteFill}
-        facing={facing}
-        flash={flash}
-        onCameraReady={() => setCameraReady(true)}
-        onMountError={(event) => setMountError(event.message ?? 'Camera failed to start')}
-      />
+    <View style={[styles.screen, { paddingTop: insets.top + spacing.md }]}>
+      <Text style={styles.title}>Snap your slice</Text>
+      <Text style={styles.tagline}>snap · rate · log</Text>
 
-      {/* Slice framing guide */}
-      <View style={styles.guideLayer} pointerEvents="none">
-        <View style={styles.wedge}>
-          <View style={[styles.wedgeLine, styles.wedgeCrust]} />
-          <View style={[styles.wedgeLine, styles.wedgeSideLeft]} />
-          <View style={[styles.wedgeLine, styles.wedgeSideRight]} />
-        </View>
-        <View style={styles.guidePill}>
-          <Text style={styles.guidePillText}>Frame your slice</Text>
-        </View>
-      </View>
-
-      {/* Top bar */}
-      <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
-        <Pressable onPress={handleClose} hitSlop={8} style={styles.iconButton}>
-          <SymbolView name="xmark" size={22} tintColor={WHITE} />
-        </Pressable>
-        <View style={styles.topBarRight}>
-          <Pressable
-            onPress={() => setFlash((f) => (f === 'off' ? 'on' : 'off'))}
-            hitSlop={8}
-            style={styles.iconButton}
-          >
-            <SymbolView
-              name={flash === 'off' ? 'bolt.slash.fill' : 'bolt.fill'}
-              size={22}
-              tintColor={WHITE}
+      {photoUri ? (
+        <>
+          <StickerCard badge="Looking good">
+            <Image source={{ uri: photoUri }} style={styles.fill} contentFit="cover" />
+          </StickerCard>
+          <View style={styles.controls}>
+            <CircleButton onPress={handleClose}>
+              <Ionicons name="close" size={24} color={INK} />
+            </CircleButton>
+            <PillButton
+              onPress={() => router.push('/log/rate')}
+              icon="checkmark"
+              label="Rate it"
             />
-          </Pressable>
-          <Pressable
-            onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
-            hitSlop={8}
-            style={styles.iconButton}
-          >
-            <SymbolView
-              name="arrow.triangle.2.circlepath.camera"
-              size={24}
-              tintColor={WHITE}
-            />
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Bottom controls */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.lg }]}>
-        <Pressable onPress={pickFromLibrary} hitSlop={8} style={styles.bottomSide}>
-          <SymbolView name="photo.on.rectangle" size={28} tintColor={WHITE} />
-        </Pressable>
-
-        <Pressable onPress={takePicture} disabled={isCapturing}>
-          {({ pressed }) => (
-            <View
-              style={[
-                styles.shutterRing,
-                pressed && styles.shutterPressed,
-                isCapturing && styles.shutterDisabled,
-              ]}
-            >
-              <View style={styles.shutterDisc} />
+            <CircleButton onPress={handleRetake}>
+              <Ionicons name="refresh" size={22} color={INK} />
+            </CircleButton>
+          </View>
+        </>
+      ) : cameraBlocked ? (
+        <>
+          <StickerCard badge={!permission.granted ? 'Camera access needed' : 'Camera unavailable'}>
+            <View style={styles.blockedViewport}>
+              <Ionicons name="camera-outline" size={48} color={colors.textMuted} />
+              <Text style={styles.blockedText}>
+                {!permission.granted
+                  ? 'Allow camera access in settings, or pick a photo from your library.'
+                  : 'The camera could not start here. Pick a photo from your library instead.'}
+              </Text>
+              {!permission.granted && (
+                <Pressable onPress={() => Linking.openSettings()} hitSlop={8}>
+                  <Text style={styles.settingsLink}>Open settings</Text>
+                </Pressable>
+              )}
             </View>
-          )}
-        </Pressable>
+          </StickerCard>
+          <View style={styles.controls}>
+            <CircleButton onPress={handleClose}>
+              <Ionicons name="close" size={24} color={INK} />
+            </CircleButton>
+            <PillButton onPress={pickFromLibrary} icon="photo.on.rectangle" label="Library" />
+            <CircleButton onPress={handleSkip}>
+              <Ionicons name="arrow-forward" size={22} color={INK} />
+            </CircleButton>
+          </View>
+        </>
+      ) : (
+        <>
+          <StickerCard badge="Say cheese">
+            <CameraView
+              ref={cameraRef}
+              style={styles.fill}
+              facing={facing}
+              flash={flash}
+              onCameraReady={() => setCameraReady(true)}
+              onMountError={(event) => setMountError(event.message ?? 'Camera failed to start')}
+            />
+            <View style={styles.viewportButtons}>
+              <Pressable
+                onPress={() => setFlash((f) => (f === 'off' ? 'on' : 'off'))}
+                hitSlop={6}
+                style={styles.viewportButton}
+              >
+                <SymbolView
+                  name={flash === 'off' ? 'bolt.slash.fill' : 'bolt.fill'}
+                  size={16}
+                  tintColor={INK}
+                />
+              </Pressable>
+              <Pressable
+                onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
+                hitSlop={6}
+                style={styles.viewportButton}
+              >
+                <SymbolView name="arrow.triangle.2.circlepath.camera" size={16} tintColor={INK} />
+              </Pressable>
+            </View>
+          </StickerCard>
+          <View style={styles.controls}>
+            <CircleButton onPress={handleClose}>
+              <Ionicons name="close" size={24} color={INK} />
+            </CircleButton>
+            <PillButton
+              onPress={takePicture}
+              disabled={isCapturing}
+              icon="camera.fill"
+              label="Snap it"
+            />
+            <CircleButton onPress={pickFromLibrary}>
+              <Ionicons name="images-outline" size={22} color={INK} />
+            </CircleButton>
+          </View>
+        </>
+      )}
 
-        <Pressable onPress={handleSkip} hitSlop={8} style={styles.bottomSide}>
-          <Text style={styles.skipText}>Skip</Text>
-        </Pressable>
-      </View>
+      <Pressable onPress={handleSkip} hitSlop={8} style={styles.skip}>
+        <Text style={styles.skipText}>Skip photo</Text>
+      </Pressable>
     </View>
   );
 }
 
-// Wedge guide geometry: slice tip at bottom center, crust along the top,
-// sides drawn as rotated dashed lines.
-const WEDGE_WIDTH = 220;
-const WEDGE_HEIGHT = 240;
-const SIDE_LENGTH = 236;
-
 const styles = StyleSheet.create({
-  // Camera state
-  cameraScreen: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  guideLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  wedge: {
-    width: WEDGE_WIDTH,
-    height: WEDGE_HEIGHT,
-  },
-  wedgeLine: {
-    position: 'absolute',
-    height: 0,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(255, 255, 255, 0.85)',
-    borderRadius: 1,
-  },
-  wedgeCrust: {
-    top: 20,
-    left: 25,
-    width: WEDGE_WIDTH - 50,
-  },
-  wedgeSideLeft: {
-    top: 129,
-    left: (WEDGE_WIDTH - 50) / 4 + 25 - SIDE_LENGTH / 2,
-    width: SIDE_LENGTH,
-    transform: [{ rotate: '69deg' }],
-  },
-  wedgeSideRight: {
-    top: 129,
-    left: WEDGE_WIDTH - 25 - (WEDGE_WIDTH - 50) / 4 - SIDE_LENGTH / 2,
-    width: SIDE_LENGTH,
-    transform: [{ rotate: '-69deg' }],
-  },
-  guidePill: {
-    marginTop: spacing.lg,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    borderRadius: radii.full,
-    paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.md,
-  },
-  guidePillText: {
-    color: WHITE,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-  },
-  topBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-  },
-  topBarRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg,
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-  },
-  bottomSide: {
-    width: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shutterRing: {
-    width: 76,
-    height: 76,
-    borderRadius: radii.full,
-    borderWidth: 4,
-    borderColor: WHITE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shutterPressed: {
-    transform: [{ scale: 0.92 }],
-  },
-  shutterDisabled: {
-    opacity: 0.6,
-  },
-  shutterDisc: {
-    width: 58,
-    height: 58,
-    borderRadius: radii.full,
-    backgroundColor: colors.brand,
-  },
-  skipText: {
-    color: WHITE,
-    fontSize: fontSize.md,
-    fontWeight: '600',
-  },
-
-  // Preview and fallback states (butter theme)
-  previewScreen: {
+  screen: {
     flex: 1,
     backgroundColor: colors.bg,
-  },
-  previewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
+  },
+  title: {
+    fontSize: fontSize.xl,
+    fontWeight: '800',
+    color: INK,
+    marginTop: spacing.sm,
+  },
+  tagline: {
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
+    marginTop: 2,
     marginBottom: spacing.lg,
   },
-  previewTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: colors.textPrimary,
+  card: {
+    alignSelf: 'stretch',
+    backgroundColor: FRAME,
+    borderRadius: 28,
+    padding: spacing.md,
+    paddingTop: spacing.lg + spacing.xs,
+    shadowColor: INK,
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.3,
+    shadowRadius: 0,
+    elevation: 8,
   },
-  previewContainer: {
+  viewport: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    aspectRatio: 3 / 4,
+    backgroundColor: '#1B1610',
+  },
+  fill: {
     flex: 1,
+  },
+  badge: {
+    position: 'absolute',
+    top: -14,
+    alignSelf: 'center',
+    backgroundColor: WHITE,
+    borderRadius: radii.full,
+    borderWidth: 1.5,
+    borderColor: INK,
+    paddingVertical: 6,
+    paddingHorizontal: spacing.md,
+    shadowColor: INK,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 0,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    color: INK,
+  },
+  dot: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  dotTopLeft: {
+    top: 10,
+    left: 14,
+    backgroundColor: '#C43C24',
+  },
+  dotBottomRight: {
+    bottom: 10,
+    right: 16,
+    backgroundColor: '#75A24E',
+  },
+  sprinkle: {
+    position: 'absolute',
+    bottom: 12,
+    left: 22,
+    width: 16,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.brand,
+    transform: [{ rotate: '-18deg' }],
+  },
+  viewportButtons: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  viewportButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: WHITE,
+    borderWidth: 1.5,
+    borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
   },
-  preview: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: radii.lg,
-  },
-  retakeButton: {
+  controls: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.bgCard,
-    borderRadius: radii.full,
+    justifyContent: 'center',
+    gap: spacing.lg,
+    marginTop: spacing.xl,
   },
-  retakeText: {
-    color: colors.textPrimary,
+  circleButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: WHITE,
+    borderWidth: 1.5,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: INK,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 0,
+    elevation: 6,
+  },
+  pillButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.brand,
+    borderRadius: radii.full,
+    borderWidth: 1.5,
+    borderColor: INK,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    shadowColor: INK,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 0,
+    elevation: 6,
+  },
+  pillDisabled: {
+    opacity: 0.6,
+  },
+  pillText: {
+    color: WHITE,
+    fontSize: fontSize.md,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  pressedDown: {
+    transform: [{ translateY: 3 }],
+    shadowOffset: { width: 0, height: 2 },
+  },
+  skip: {
+    marginTop: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  skipText: {
+    color: colors.textMuted,
     fontSize: fontSize.md,
     fontWeight: '600',
   },
-  previewBottom: {
-    paddingHorizontal: spacing.lg,
-  },
-  nextButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  nextButtonText: {
-    color: WHITE,
-    fontSize: fontSize.lg,
-    fontWeight: '700',
-  },
 
-  // Fallback (denied or camera unavailable)
-  fallbackContent: {
+  // Blocked state content inside the viewport
+  blockedViewport: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
     gap: spacing.md,
+    padding: spacing.lg,
+    backgroundColor: colors.bgCard,
   },
-  fallbackTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  fallbackBody: {
+  blockedText: {
     fontSize: fontSize.md,
     color: colors.textSecondary,
     textAlign: 'center',
@@ -460,21 +447,5 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: '700',
     paddingVertical: spacing.xs,
-  },
-  libraryCard: {
-    marginTop: spacing.md,
-    alignSelf: 'stretch',
-    backgroundColor: colors.bgCard,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    alignItems: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  libraryCardText: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
-    fontWeight: '600',
   },
 });
