@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { goBack } from '../lib/nav';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Host, TextInput } from '@expo/ui';
 import { SymbolView } from 'expo-symbols';
@@ -85,7 +86,7 @@ export default function SignIn() {
     }
   };
 
-  const title = isUpgrade ? 'Save your hall of fame' : 'Welcome back';
+  const title = isUpgrade ? 'Save your pizzas' : 'Welcome back';
   const subtitle = isUpgrade
     ? 'Add an email so your logs, points, and streaks survive a lost phone.'
     : 'Sign in with your email to pick up where you left off.';
@@ -103,7 +104,7 @@ export default function SignIn() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Pressable style={styles.closeButton} onPress={() => router.back()}>
+          <Pressable style={styles.closeButton} onPress={() => goBack()}>
             <Text style={styles.closeText}>Close</Text>
           </Pressable>
         </View>
@@ -118,9 +119,9 @@ export default function SignIn() {
             />
             <Text style={styles.title}>Check your inbox</Text>
             <Text style={styles.subtitle}>
-              Your account is linked to {email}. Your hall of fame is safe.
+              Your account is linked to {email}. Your pizzas are safe.
             </Text>
-            <Pressable style={styles.primaryButton} onPress={() => router.back()}>
+            <Pressable style={styles.primaryButton} onPress={() => goBack()}>
               <Text style={styles.primaryButtonText}>Done</Text>
             </Pressable>
           </View>

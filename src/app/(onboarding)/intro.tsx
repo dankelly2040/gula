@@ -38,7 +38,7 @@ const PANELS: Panel[] = [
     key: 'rank',
     symbol: 'trophy.fill',
     title: 'Climb your ranking and earn points',
-    body: 'Build your personal hall of fame, keep your streak alive, and rack up points with every log.',
+    body: 'Build your pizza list, keep your streak alive, and rack up points with every log.',
   },
 ];
 

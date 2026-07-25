@@ -19,7 +19,7 @@ export default function Welcome() {
         />
         <Text style={styles.title}>Gula</Text>
         <Text style={styles.subtitle}>
-          Rate every slice from Vom to Nirvana{'\n'}and build your pizza hall of fame.
+          Rate every slice from Vom to Nirvana{'\n'}and remember every pizza you eat.
         </Text>
       </View>
 

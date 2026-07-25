@@ -67,7 +67,7 @@ export function MoneyShotSlider({ value, onChange }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.label}>The Money Shot</Text>
+        <Text style={styles.label}>Rate this pizza</Text>
         <View style={[styles.scoreBadge, { backgroundColor: zone.color + '30' }]}>
           <Text style={[styles.scoreText, { color: zone.color }]}>{value}</Text>
           <Text style={[styles.zoneText, { color: zone.color }]}>{zone.label}</Text>

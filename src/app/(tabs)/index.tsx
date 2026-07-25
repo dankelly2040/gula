@@ -11,9 +11,8 @@ import { colors, spacing, fontSize, radii } from '../../constants/theme';
 type SortKey = 'moneyShot' | 'pizzaScore' | 'date';
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'moneyShot', label: 'Money Shot' },
-  { key: 'pizzaScore', label: 'Pizza Score' },
-  { key: 'date', label: 'Recent' },
+  { key: 'moneyShot', label: 'Pizza ratings' },
+  { key: 'date', label: 'Recents' },
 ];
 
 export default function Activity() {

@@ -8,6 +8,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { goBack } from '../../lib/nav';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Host, Picker, Text as NativeText } from '@expo/ui/swift-ui';
@@ -132,7 +133,7 @@ export default function Details() {
       if (router.canDismiss()) {
         router.dismiss();
       } else {
-        router.back();
+        goBack();
       }
       return;
     }
@@ -186,7 +187,7 @@ export default function Details() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => goBack()}>
           <Ionicons name="arrow-back" size={28} color={colors.textPrimary} />
         </Pressable>
         <Text style={styles.title}>Details</Text>

@@ -58,15 +58,15 @@ const PEPPERONI = '#C43C24';
 const HALF_ANGLE = 0.52; // wedge is -PI/2 +/- 0.52 rad
 const TIP_ANGLE = -Math.PI / 2;
 
-const CHEESE_COUNT = 50;
-const CRUST_COUNT = 30;
+const CHEESE_COUNT = 160;
+const CRUST_COUNT = 90;
 const PEPPERONI_CLUSTERS: Array<{ rFrac: number; angFrac: number }> = [
   { rFrac: 0.4, angFrac: -0.5 },
   { rFrac: 0.62, angFrac: 0.45 },
   { rFrac: 0.74, angFrac: -0.3 },
   { rFrac: 0.52, angFrac: 0.12 },
 ];
-const PEPPERONI_PER_CLUSTER = 4;
+const PEPPERONI_PER_CLUSTER = 12;
 
 type ParticleSpec = {
   key: string;

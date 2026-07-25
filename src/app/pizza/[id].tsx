@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, Alert, Share } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { goBack } from '../../lib/nav';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,7 +22,7 @@ export default function PizzaDetail() {
     return (
       <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
         <Text style={styles.notFound}>Log not found</Text>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => goBack()}>
           <Text style={styles.backLink}>Go back</Text>
         </Pressable>
       </View>
@@ -71,7 +72,7 @@ export default function PizzaDetail() {
         text: 'Delete',
         style: 'destructive',
         onPress: () => {
-          deleteLog(log.id, { onSuccess: () => router.back() });
+          deleteLog(log.id, { onSuccess: () => goBack() });
         },
       },
     ]);
@@ -90,7 +91,7 @@ export default function PizzaDetail() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => goBack()}>
           <Ionicons name="arrow-back" size={28} color={colors.textPrimary} />
         </Pressable>
         <View style={styles.headerActions}>
@@ -123,7 +124,7 @@ export default function PizzaDetail() {
           <Text style={styles.date}>{date}</Text>
 
           <View style={[styles.moneyShot, { borderColor: zone.color + '40' }]}>
-            <Text style={styles.moneyShotLabel}>The Money Shot</Text>
+            <Text style={styles.moneyShotLabel}>Rating</Text>
             <View style={styles.moneyShotRow}>
               <Text style={[styles.moneyShotValue, { color: zone.color }]}>
                 {log.moneyShot}

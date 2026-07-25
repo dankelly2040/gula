@@ -13,6 +13,8 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { SymbolView } from 'expo-symbols';
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'expo-image';
 import { useProfile, useSaveProfile, useEnsureProfile, useAchievements } from '../../hooks/use-profile';
 import { ACHIEVEMENT_DEFS, type AchievementType } from '../../db/types';
 import { PIZZA_STYLES, type PizzaStyle } from '../../constants/enums';
@@ -30,6 +32,19 @@ export default function Profile() {
   const [nameDraft, setNameDraft] = useState('');
   const [cityDraft, setCityDraft] = useState('');
   const [styleDraft, setStyleDraft] = useState<PizzaStyle | null>(null);
+  const [avatarDraft, setAvatarDraft] = useState<string | null>(null);
+
+  const pickAvatar = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setAvatarDraft(result.assets[0].uri);
+    }
+  };
 
   const displayName = profile?.displayName || 'Pizza enthusiast';
   const earnedTypes = new Set(achievements?.map((a) => a.type) ?? []);
@@ -42,6 +57,7 @@ export default function Profile() {
     setNameDraft(profile?.displayName ?? '');
     setCityDraft(profile?.homeCity ?? '');
     setStyleDraft(profile?.favoriteStyle ?? null);
+    setAvatarDraft(profile?.avatarUrl ?? null);
     setIsEditing(true);
   };
 
@@ -52,6 +68,7 @@ export default function Profile() {
       displayName: nameDraft.trim() || null,
       homeCity: cityDraft.trim() || null,
       favoriteStyle: styleDraft,
+      avatarUrl: avatarDraft,
     });
     setIsEditing(false);
   };
@@ -73,13 +90,30 @@ export default function Profile() {
           </Pressable>
         </View>
 
-        <View style={styles.avatar}>
-          <SymbolView
-            name="person.crop.circle.fill"
-            size={44}
-            tintColor={colors.textMuted}
-          />
-        </View>
+        <Pressable
+          style={styles.avatar}
+          onPress={isEditing ? pickAvatar : undefined}
+          disabled={!isEditing}
+        >
+          {(isEditing ? avatarDraft : profile?.avatarUrl) ? (
+            <Image
+              source={{ uri: (isEditing ? avatarDraft : profile?.avatarUrl)! }}
+              style={styles.avatarImage}
+              contentFit="cover"
+            />
+          ) : (
+            <SymbolView
+              name="person.crop.circle.fill"
+              size={44}
+              tintColor={colors.textMuted}
+            />
+          )}
+          {isEditing && (
+            <View style={styles.avatarBadge}>
+              <Ionicons name="camera" size={14} color="#FFFEF4" />
+            </View>
+          )}
+        </Pressable>
 
         {isEditing ? (
           <View style={styles.editCard}>
@@ -233,6 +267,24 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     borderWidth: 2,
     borderColor: colors.border,
+  },
+  avatarImage: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+  },
+  avatarBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.bgCard,
   },
   name: {
     fontSize: fontSize.lg,

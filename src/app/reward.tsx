@@ -1,4 +1,12 @@
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -33,6 +41,27 @@ export default function Reward() {
     }
   }, []);
 
+  // Let the confetti burst own the screen first, then snap the card in:
+  // ease-out entrance from scale 0.95 + slight rise, under 300ms.
+  const reducedMotion = useReducedMotion();
+  const cardIn = useSharedValue(reducedMotion ? 1 : 0);
+  useEffect(() => {
+    if (reducedMotion) return;
+    cardIn.value = withDelay(
+      800,
+      withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reducedMotion]);
+
+  const cardStyle = useAnimatedStyle(() => ({
+    opacity: cardIn.value,
+    transform: [
+      { translateY: 16 * (1 - cardIn.value) },
+      { scale: 0.95 + 0.05 * cardIn.value },
+    ],
+  }));
+
   const dismiss = () => router.replace('/(tabs)');
 
   const handleSaveProgress = () => {
@@ -47,12 +76,12 @@ export default function Reward() {
 
   return (
     <Pressable style={styles.overlay} onPress={isFirst ? undefined : dismiss}>
-      <PizzaConfetti seed={points + unlocked.length * 31} />
-      <View
+      <Animated.View
         style={[
           styles.card,
           isFirst && styles.cardFirstLog,
           { marginBottom: insets.bottom + spacing.lg },
+          cardStyle,
         ]}
       >
         <SymbolView
@@ -62,7 +91,7 @@ export default function Reward() {
           style={styles.heroSymbol}
         />
         <Text style={styles.title}>
-          {isFirst ? 'Your hall of fame has begun' : 'Slice logged!'}
+          {isFirst ? 'Your first pizza is in the books' : 'Pizza logged!'}
         </Text>
         <Text style={styles.points}>+{points} points</Text>
 
@@ -108,14 +137,15 @@ export default function Reward() {
         ) : (
           <>
             <Text style={styles.message}>
-              Your pizza hall of fame is growing. Keep logging to climb the ranks.
+              Your pizza list is growing. Keep logging to climb the ranks.
             </Text>
             <Pressable style={styles.primaryButton} onPress={dismiss}>
-              <Text style={styles.primaryButtonText}>View your hall of fame</Text>
+              <Text style={styles.primaryButtonText}>See my pizzas</Text>
             </Pressable>
           </>
         )}
-      </View>
+      </Animated.View>
+      <PizzaConfetti seed={points + unlocked.length * 31} />
     </Pressable>
   );
 }
