@@ -10,7 +10,8 @@ import { usePizzaLogs } from '../../hooks/use-pizza-logs';
 import { PizzaCard } from '../../components/pizza-card';
 import { useDraftLogStore } from '../../state/draft-log';
 import { supabase } from '../../lib/supabase';
-import { colors, spacing, fontSize, radii } from '../../constants/theme';
+import { PillButton } from '../../components/sticker';
+import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
 import type { Spot } from '../../db/types';
 import type { DiscoverData } from '../../hooks/use-discover';
 
@@ -98,9 +99,7 @@ export default function SpotDetail() {
           </View>
         )}
 
-        <Pressable style={styles.logButton} onPress={handleLogHere}>
-          <Text style={styles.logButtonText}>Log a slice here</Text>
-        </Pressable>
+        <PillButton onPress={handleLogHere} label="Log a slice here" style={styles.logButton} />
 
         <Text style={styles.sectionTitle}>Your logs here</Text>
         {myLogs.length === 0 ? (
@@ -145,31 +144,22 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: spacing.md,
   },
+  // Sticker frame around the map viewport; the map itself stays native.
   mapWrap: {
     height: 180,
     borderRadius: radii.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
     marginTop: spacing.sm,
     marginBottom: spacing.md,
+    ...sticker.border,
+    ...sticker.shadowSm,
   },
   map: {
     flex: 1,
   },
   logButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
     marginTop: spacing.sm,
     marginBottom: spacing.xl,
-  },
-  logButtonText: {
-    // White is allowed here: it sits on the brand fill.
-    color: '#FFFDF8',
-    fontSize: fontSize.lg,
-    fontWeight: '700',
   },
   sectionTitle: {
     fontSize: fontSize.lg,

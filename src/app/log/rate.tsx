@@ -7,8 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { MoneyShotSlider } from '../../components/money-shot-slider';
 import { ScorePips } from '../../components/score-pips';
 import { useDraftLogStore } from '../../state/draft-log';
-import { SEND_FRIEND_OPTIONS, type SendFriend } from '../../constants/enums';
-import { colors, spacing, fontSize, radii } from '../../constants/theme';
+import { SEND_FRIEND_OPTIONS } from '../../constants/enums';
+import { PillButton, StickerChip } from '../../components/sticker';
+import { colors, spacing, fontSize } from '../../constants/theme';
 
 export default function Rate() {
   const router = useRouter();
@@ -123,31 +124,20 @@ export default function Rate() {
           <Text style={styles.sectionTitle}>Would you send a friend?</Text>
           <View style={styles.sendFriendOptions}>
             {SEND_FRIEND_OPTIONS.map((opt) => (
-              <Pressable
+              <StickerChip
                 key={opt}
-                style={[
-                  styles.sendFriendChip,
-                  sendFriend === opt && styles.sendFriendChipActive,
-                ]}
+                label={opt}
+                selected={sendFriend === opt}
                 onPress={() => setSendFriend(sendFriend === opt ? null : opt)}
-              >
-                <Text
-                  style={[
-                    styles.sendFriendText,
-                    sendFriend === opt && styles.sendFriendTextActive,
-                  ]}
-                >
-                  {opt}
-                </Text>
-              </Pressable>
+              />
             ))}
           </View>
         </View>
       </ScrollView>
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing.lg }]}>
-        <Pressable
-          style={styles.nextButton}
+        <PillButton
+          label="Details"
           onPress={() =>
             router.push(
               editId
@@ -155,10 +145,7 @@ export default function Rate() {
                 : '/log/details'
             )
           }
-        >
-          <Text style={styles.nextButtonText}>Next: Details</Text>
-          <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-        </Pressable>
+        />
       </View>
     </View>
   );
@@ -222,45 +209,11 @@ const styles = StyleSheet.create({
   },
   sendFriendOptions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
     marginTop: spacing.md,
   },
-  sendFriendChip: {
-    flex: 1,
-    backgroundColor: colors.bgCard,
-    borderRadius: radii.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.border,
-  },
-  sendFriendChipActive: {
-    borderColor: colors.brand,
-    backgroundColor: colors.brand + '20',
-  },
-  sendFriendText: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  sendFriendTextActive: {
-    color: colors.brand,
-  },
   bottom: {
     paddingHorizontal: spacing.lg,
-  },
-  nextButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  nextButtonText: {
-    color: '#FFFFFF',
-    fontSize: fontSize.lg,
-    fontWeight: '700',
   },
 });

@@ -16,7 +16,8 @@ import { ACHIEVEMENT_DEFS, type AchievementType } from '../db/types';
 import { enableStreakReminders } from '../lib/notifications';
 import { useSessionStore } from '../state/session';
 import { PizzaConfetti } from '../components/pizza-confetti';
-import { colors, spacing, fontSize, radii } from '../constants/theme';
+import { PillButton } from '../components/sticker';
+import { colors, spacing, fontSize, radii, sticker } from '../constants/theme';
 
 export default function Reward() {
   const router = useRouter();
@@ -122,14 +123,16 @@ export default function Reward() {
             <Text style={styles.message}>
               First slice in the books. Keep it going and never lose it.
             </Text>
-            {isAnonymous && (
-              <Pressable style={styles.primaryButton} onPress={handleSaveProgress}>
-                <Text style={styles.primaryButtonText}>Save your progress</Text>
-              </Pressable>
-            )}
-            <Pressable style={styles.secondaryButton} onPress={handleRemindWeekly}>
-              <Text style={styles.secondaryButtonText}>Remind me weekly</Text>
-            </Pressable>
+            <View style={styles.buttonStack}>
+              {isAnonymous && (
+                <PillButton label="Save your progress" onPress={handleSaveProgress} />
+              )}
+              <PillButton
+                variant="quiet"
+                label="Remind me weekly"
+                onPress={() => void handleRemindWeekly()}
+              />
+            </View>
             <Pressable style={styles.dismissButton} onPress={dismiss}>
               <Text style={styles.dismissButtonText}>Not now</Text>
             </Pressable>
@@ -139,9 +142,9 @@ export default function Reward() {
             <Text style={styles.message}>
               Your pizza list is growing. Keep logging to climb the ranks.
             </Text>
-            <Pressable style={styles.primaryButton} onPress={dismiss}>
-              <Text style={styles.primaryButtonText}>See my pizzas</Text>
-            </Pressable>
+            <View style={styles.buttonStack}>
+              <PillButton label="See my pizzas" onPress={dismiss} />
+            </View>
           </>
         )}
       </Animated.View>
@@ -159,13 +162,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   card: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.surface,
     borderRadius: radii.xl,
     padding: spacing.xl,
     alignItems: 'center',
     width: '100%',
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...sticker.border,
+    ...sticker.shadowLg,
   },
   // Gold is reserved for points and Nirvana; the first log is the one other
   // moment that earns the gold treatment.
@@ -224,34 +227,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: spacing.lg,
   },
-  primaryButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+  buttonStack: {
     width: '100%',
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: fontSize.lg,
-    fontWeight: '700',
-  },
-  secondaryButton: {
-    backgroundColor: colors.bgElevated,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    width: '100%',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  secondaryButtonText: {
-    color: colors.textPrimary,
-    fontSize: fontSize.md,
-    fontWeight: '700',
+    gap: spacing.sm,
   },
   dismissButton: {
     paddingVertical: spacing.md,

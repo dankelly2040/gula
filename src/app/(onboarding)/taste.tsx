@@ -7,12 +7,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing, fontSize, radii } from '../../constants/theme';
+import { PillButton, StickerChip } from '../../components/sticker';
+import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
 import { PIZZA_STYLES, type PizzaStyle } from '../../constants/enums';
 import { useSessionStore } from '../../state/session';
 import { useEnsureProfile, useSaveProfile } from '../../hooks/use-profile';
@@ -64,17 +64,12 @@ export default function TasteSetter() {
 
         <View style={styles.grid}>
           {PIZZA_STYLES.map((style) => (
-            <Pressable
+            <StickerChip
               key={style}
-              style={[styles.chip, selected === style && styles.chipSelected]}
+              label={style}
+              selected={selected === style}
               onPress={() => setSelected(style)}
-            >
-              <Text
-                style={[styles.chipText, selected === style && styles.chipTextSelected]}
-              >
-                {style}
-              </Text>
-            </Pressable>
+            />
           ))}
         </View>
 
@@ -92,17 +87,11 @@ export default function TasteSetter() {
       </ScrollView>
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing.lg }]}>
-        <Pressable
-          style={[styles.primaryButton, saving && styles.primaryButtonDisabled]}
-          onPress={handleContinue}
+        <PillButton
+          label={saving ? 'Saving' : 'Continue'}
+          onPress={() => void handleContinue()}
           disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.primaryButtonText}>Continue</Text>
-          )}
-        </Pressable>
+        />
 
         <Pressable style={styles.skipButton} onPress={handleSkip} disabled={saving}>
           <Text style={styles.skipText}>Skip for now</Text>
@@ -140,26 +129,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  chip: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radii.full,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderWidth: 2,
-    borderColor: colors.border,
-  },
-  chipSelected: {
-    borderColor: colors.brand,
-    backgroundColor: colors.brand + '20',
-  },
-  chipText: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  chipTextSelected: {
-    color: colors.brand,
-  },
   inputLabel: {
     fontSize: fontSize.sm,
     fontWeight: '600',
@@ -170,8 +139,7 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: colors.bgInput,
     borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...sticker.border,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: fontSize.md,
@@ -180,20 +148,6 @@ const styles = StyleSheet.create({
   bottom: {
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
-  },
-  primaryButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  primaryButtonDisabled: {
-    opacity: 0.7,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: fontSize.lg,
-    fontWeight: '700',
   },
   skipButton: {
     alignItems: 'center',

@@ -12,6 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
+import { PillButton } from '../../components/sticker';
 import { colors, spacing, fontSize, radii } from '../../constants/theme';
 
 type Panel = {
@@ -108,11 +109,7 @@ export default function Intro() {
           ))}
         </View>
 
-        <Pressable style={styles.primaryButton} onPress={handleNext}>
-          <Text style={styles.primaryButtonText}>
-            {isLastPage ? 'Get started' : 'Next'}
-          </Text>
-        </Pressable>
+        <PillButton label={isLastPage ? 'Get started' : 'Next'} onPress={handleNext} />
       </View>
     </View>
   );
@@ -177,16 +174,5 @@ const styles = StyleSheet.create({
   dotActive: {
     backgroundColor: colors.brand,
     width: 20,
-  },
-  primaryButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: fontSize.lg,
-    fontWeight: '700',
   },
 });

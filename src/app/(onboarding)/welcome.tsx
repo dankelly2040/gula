@@ -2,7 +2,8 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
-import { colors, spacing, fontSize, radii } from '../../constants/theme';
+import { PillButton } from '../../components/sticker';
+import { colors, spacing, fontSize } from '../../constants/theme';
 
 export default function Welcome() {
   const router = useRouter();
@@ -24,12 +25,11 @@ export default function Welcome() {
       </View>
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing.lg }]}>
-        <Pressable
-          style={styles.primaryButton}
+        <PillButton
+          label="Log a slice"
           onPress={() => router.push('/(onboarding)/taste')}
-        >
-          <Text style={styles.primaryButtonText}>Log your first slice</Text>
-        </Pressable>
+          style={styles.primaryButton}
+        />
 
         <Pressable
           style={styles.secondaryButton}
@@ -83,16 +83,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   primaryButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
     marginBottom: spacing.xs,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: fontSize.lg,
-    fontWeight: '700',
   },
   secondaryButton: {
     alignItems: 'center',

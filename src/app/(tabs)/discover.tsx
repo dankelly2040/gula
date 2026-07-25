@@ -16,7 +16,8 @@ import { AppleMaps } from 'expo-maps';
 import { useCurrentLocation, useDiscover, usePizzaPlaces } from '../../hooks/use-discover';
 import { useDraftLogStore } from '../../state/draft-log';
 import { getZoneForScore } from '../../constants/enums';
-import { colors, spacing, fontSize, radii } from '../../constants/theme';
+import { PillButton } from '../../components/sticker';
+import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
 import type { PizzaLog, Spot } from '../../db/types';
 import type { PizzaPlace } from '../../lib/pizza-places';
 
@@ -127,9 +128,7 @@ export default function Discover() {
             Gula uses your location to surface public logs and spots worth trying nearby. We only
             check while you have Discover open.
           </Text>
-          <Pressable style={styles.primaryButton} onPress={() => retryLocation()}>
-            <Text style={styles.primaryButtonText}>Enable location</Text>
-          </Pressable>
+          <PillButton onPress={() => retryLocation()} label="Enable location" />
           <Pressable onPress={() => Linking.openSettings()}>
             <Text style={styles.settingsLink}>Denied it earlier? Open settings</Text>
           </Pressable>
@@ -161,9 +160,7 @@ export default function Discover() {
           <Text style={styles.emptyText}>
             Log a slice and put your neighborhood on the map.
           </Text>
-          <Pressable style={styles.primaryButton} onPress={() => router.push('/log/capture')}>
-            <Text style={styles.primaryButtonText}>Log a slice</Text>
-          </Pressable>
+          <PillButton onPress={() => router.push('/log/capture')} label="Log a slice" />
         </View>
       );
     }
@@ -327,12 +324,12 @@ const styles = StyleSheet.create({
   },
   segmentRow: {
     flexDirection: 'row',
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.surface,
     borderRadius: radii.full,
-    borderWidth: 1,
-    borderColor: colors.border,
     padding: 3,
     marginBottom: spacing.md,
+    ...sticker.border,
+    ...sticker.shadowSm,
   },
   segment: {
     flex: 1,
@@ -341,15 +338,15 @@ const styles = StyleSheet.create({
     borderRadius: radii.full,
   },
   segmentActive: {
-    backgroundColor: colors.brand + '20',
+    backgroundColor: colors.brand,
   },
   segmentText: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.textMuted,
   },
   segmentTextActive: {
-    color: colors.brand,
+    color: colors.surface,
   },
   centered: {
     flex: 1,
@@ -378,18 +375,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: spacing.lg,
-  },
-  primaryButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-  },
-  primaryButtonText: {
-    // White is allowed here: it sits on the brand fill.
-    color: '#FFFDF8',
-    fontSize: fontSize.lg,
-    fontWeight: '700',
   },
   settingsLink: {
     marginTop: spacing.md,
@@ -423,14 +408,14 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.surface,
     borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     marginBottom: spacing.sm,
     gap: spacing.sm,
+    ...sticker.border,
+    ...sticker.shadowSm,
   },
   rowInfo: {
     flex: 1,

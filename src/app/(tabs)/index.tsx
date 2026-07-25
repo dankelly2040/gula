@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, FlatList } from 'react-native';
+import { View, Text, StyleSheet, FlatList } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
@@ -6,7 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRankedLogs } from '../../hooks/use-pizza-logs';
 import { useProfile } from '../../hooks/use-profile';
 import { PizzaCard } from '../../components/pizza-card';
-import { colors, spacing, fontSize, radii } from '../../constants/theme';
+import { PillButton, StickerChip } from '../../components/sticker';
+import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
 
 type SortKey = 'moneyShot' | 'pizzaScore' | 'date';
 
@@ -58,20 +59,12 @@ export default function Activity() {
       {logs.length > 0 && (
         <View style={styles.sortRow}>
           {SORT_OPTIONS.map((opt) => (
-            <Pressable
+            <StickerChip
               key={opt.key}
-              style={[styles.sortChip, sortBy === opt.key && styles.sortChipActive]}
+              label={opt.label}
+              selected={sortBy === opt.key}
               onPress={() => setSortBy(opt.key)}
-            >
-              <Text
-                style={[
-                  styles.sortChipText,
-                  sortBy === opt.key && styles.sortChipTextActive,
-                ]}
-              >
-                {opt.label}
-              </Text>
-            </Pressable>
+            />
           ))}
         </View>
       )}
@@ -88,12 +81,10 @@ export default function Activity() {
           <Text style={styles.emptyText}>
             Log your first pizza and start building your stats.
           </Text>
-          <Pressable
-            style={styles.emptyButton}
+          <PillButton
             onPress={() => router.push('/log/capture')}
-          >
-            <Text style={styles.emptyButtonText}>Log your first slice</Text>
-          </Pressable>
+            label="Log your first slice"
+          />
         </View>
       ) : (
         <FlatList
@@ -149,13 +140,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.surface,
     borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     marginBottom: spacing.md,
+    ...sticker.border,
+    ...sticker.shadowSm,
   },
   streakText: {
     fontSize: fontSize.sm,
@@ -166,25 +157,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.md,
-  },
-  sortChip: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radii.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sortChipActive: {
-    borderColor: colors.brand,
-  },
-  sortChipText: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    fontWeight: '600',
-  },
-  sortChipTextActive: {
-    color: colors.brand,
   },
   list: {
     paddingBottom: spacing.xxl,
@@ -213,17 +185,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: spacing.lg,
-  },
-  emptyButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-  },
-  emptyButtonText: {
-    // White is allowed here: it sits on the brand fill.
-    color: '#FFFDF8',
-    fontSize: fontSize.lg,
-    fontWeight: '700',
   },
 });

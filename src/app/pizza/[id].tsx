@@ -8,7 +8,8 @@ import { usePizzaLogs, useDeleteLog } from '../../hooks/use-pizza-logs';
 import { useDraftLogStore } from '../../state/draft-log';
 import { getZoneForScore } from '../../constants/enums';
 import type { SubScores, PizzaTags } from '../../db/types';
-import { colors, spacing, fontSize, radii } from '../../constants/theme';
+import { CircleButton } from '../../components/sticker';
+import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
 
 export default function PizzaDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -95,15 +96,15 @@ export default function PizzaDetail() {
           <Ionicons name="arrow-back" size={28} color={colors.textPrimary} />
         </Pressable>
         <View style={styles.headerActions}>
-          <Pressable onPress={() => void handleShare()} hitSlop={4}>
-            <Ionicons name="share-outline" size={24} color={colors.textSecondary} />
-          </Pressable>
-          <Pressable onPress={handleEdit} hitSlop={4}>
-            <Ionicons name="pencil-outline" size={24} color={colors.textSecondary} />
-          </Pressable>
-          <Pressable onPress={handleDelete} hitSlop={4}>
-            <Ionicons name="trash-outline" size={24} color={colors.danger} />
-          </Pressable>
+          <CircleButton onPress={() => void handleShare()} size={40}>
+            <Ionicons name="share-outline" size={20} color={colors.ink} />
+          </CircleButton>
+          <CircleButton onPress={handleEdit} size={40}>
+            <Ionicons name="pencil-outline" size={20} color={colors.ink} />
+          </CircleButton>
+          <CircleButton onPress={handleDelete} size={40}>
+            <Ionicons name="trash-outline" size={20} color={colors.danger} />
+          </CircleButton>
         </View>
       </View>
 
@@ -123,7 +124,7 @@ export default function PizzaDetail() {
           <Text style={styles.spotName}>{log.spotName ?? 'Unknown spot'}</Text>
           <Text style={styles.date}>{date}</Text>
 
-          <View style={[styles.moneyShot, { borderColor: zone.color + '40' }]}>
+          <View style={styles.moneyShot}>
             <Text style={styles.moneyShotLabel}>Rating</Text>
             <View style={styles.moneyShotRow}>
               <Text style={[styles.moneyShotValue, { color: zone.color }]}>
@@ -259,16 +260,19 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: spacing.lg,
   },
+  // Mustard sticker frame, echoing the capture card.
   moneyShot: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.frame,
     borderRadius: radii.lg,
     padding: spacing.lg,
-    borderWidth: 1,
     marginBottom: spacing.lg,
+    ...sticker.border,
+    ...sticker.shadow,
   },
   moneyShotLabel: {
     fontSize: fontSize.sm,
-    color: colors.textMuted,
+    // Ink holds contrast on the mustard frame.
+    color: colors.ink,
     fontWeight: '600',
     marginBottom: spacing.xs,
   },

@@ -18,7 +18,8 @@ import { Image } from 'expo-image';
 import { useProfile, useSaveProfile, useEnsureProfile, useAchievements } from '../../hooks/use-profile';
 import { ACHIEVEMENT_DEFS, type AchievementType } from '../../db/types';
 import { PIZZA_STYLES, type PizzaStyle } from '../../constants/enums';
-import { colors, spacing, fontSize, radii } from '../../constants/theme';
+import { PillButton, StickerChip } from '../../components/sticker';
+import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
 
 export default function Profile() {
   const insets = useSafeAreaInsets();
@@ -138,29 +139,22 @@ export default function Profile() {
             <Text style={styles.editLabel}>Favorite style</Text>
             <View style={styles.styleRow}>
               {PIZZA_STYLES.map((style) => (
-                <Pressable
+                <StickerChip
                   key={style}
-                  style={[styles.styleChip, styleDraft === style && styles.styleChipActive]}
+                  label={style}
+                  selected={styleDraft === style}
                   onPress={() => setStyleDraft(styleDraft === style ? null : style)}
-                >
-                  <Text
-                    style={[
-                      styles.styleChipText,
-                      styleDraft === style && styles.styleChipTextActive,
-                    ]}
-                  >
-                    {style}
-                  </Text>
-                </Pressable>
+                />
               ))}
             </View>
             <View style={styles.editActions}>
-              <Pressable style={styles.cancelButton} onPress={() => setIsEditing(false)}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </Pressable>
-              <Pressable style={styles.saveButton} onPress={saveEdits}>
-                <Text style={styles.saveButtonText}>Save</Text>
-              </Pressable>
+              <PillButton
+                onPress={() => setIsEditing(false)}
+                label="Cancel"
+                variant="quiet"
+                style={styles.editActionButton}
+              />
+              <PillButton onPress={saveEdits} label="Save" style={styles.editActionButton} />
             </View>
           </View>
         ) : (
@@ -176,7 +170,7 @@ export default function Profile() {
                 </View>
               ) : null}
               <Pressable style={styles.editButton} onPress={startEditing} hitSlop={4}>
-                <Ionicons name="pencil-outline" size={14} color={colors.brand} />
+                <Ionicons name="pencil-outline" size={14} color={colors.ink} />
                 <Text style={styles.editButtonText}>Edit profile</Text>
               </Pressable>
             </View>
@@ -260,13 +254,13 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
     marginBottom: spacing.md,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: colors.ink,
   },
   avatarImage: {
     width: 76,
@@ -320,29 +314,30 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '600',
   },
+  // Light StickerChip-like affordance; ink text keeps it quiet.
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.bgCard,
-    borderColor: colors.border,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
     borderRadius: radii.full,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
+    ...sticker.border,
+    ...sticker.shadowSm,
   },
   editButtonText: {
     fontSize: fontSize.sm,
-    color: colors.brand,
-    fontWeight: '600',
+    color: colors.ink,
+    fontWeight: '700',
   },
   editCard: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.surface,
     borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
     padding: spacing.md,
     marginBottom: spacing.xl,
+    ...sticker.border,
+    ...sticker.shadowSm,
   },
   editLabel: {
     fontSize: fontSize.xs,
@@ -356,37 +351,16 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: colors.bgInput,
     borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: fontSize.md,
     color: colors.textPrimary,
+    ...sticker.border,
   },
   styleRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-  },
-  styleChip: {
-    backgroundColor: colors.bgInput,
-    borderRadius: radii.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  styleChipActive: {
-    borderColor: colors.brand,
-    backgroundColor: colors.bgCard,
-  },
-  styleChipText: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    fontWeight: '600',
-  },
-  styleChipTextActive: {
-    color: colors.brand,
   },
   editActions: {
     flexDirection: 'row',
@@ -394,27 +368,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.md,
   },
-  cancelButton: {
-    paddingHorizontal: spacing.md,
+  // Compact pills so the pair sits comfortably inside the edit card.
+  editActionButton: {
     paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-  },
-  cancelButtonText: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  saveButton: {
-    backgroundColor: colors.brand,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-  },
-  saveButtonText: {
-    fontSize: fontSize.md,
-    // White is allowed here: it sits on the brand fill.
-    color: '#FFFDF8',
-    fontWeight: '700',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -423,12 +380,12 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.surface,
     borderRadius: radii.md,
     padding: spacing.md,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...sticker.border,
+    ...sticker.shadowSm,
   },
   statValue: {
     fontSize: fontSize.xl,
@@ -454,16 +411,21 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   badge: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.surface,
     borderRadius: radii.md,
     padding: spacing.md,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
     width: 100,
+    ...sticker.border,
+    ...sticker.shadowSm,
   },
+  // Locked badges read recessed: soft border, no ink, no hard shadow.
   badgeLocked: {
+    backgroundColor: colors.bgCard,
     borderColor: colors.border,
+    borderWidth: 1,
+    shadowOpacity: 0,
+    elevation: 0,
     opacity: 0.45,
   },
   badgeSymbol: {

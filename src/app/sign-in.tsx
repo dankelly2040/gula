@@ -7,14 +7,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { goBack } from '../lib/nav';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Host, TextInput } from '@expo/ui';
 import { SymbolView } from 'expo-symbols';
-import { colors, spacing, fontSize, radii } from '../constants/theme';
+import { PillButton } from '../components/sticker';
+import { colors, spacing, fontSize, radii, sticker } from '../constants/theme';
 import { useSessionStore } from '../state/session';
 import { upgradeToEmail, requestEmailCode, verifyEmailCode } from '../lib/auth';
 import { syncWithCloud } from '../db/sync';
@@ -121,9 +121,7 @@ export default function SignIn() {
             <Text style={styles.subtitle}>
               Your account is linked to {email}. Your pizzas are safe.
             </Text>
-            <Pressable style={styles.primaryButton} onPress={() => goBack()}>
-              <Text style={styles.primaryButtonText}>Done</Text>
-            </Pressable>
+            <PillButton label="Done" onPress={() => goBack()} style={styles.submitButton} />
           </View>
         ) : (
           <>
@@ -161,20 +159,12 @@ export default function SignIn() {
 
                 {error && <Text style={styles.errorText}>{error}</Text>}
 
-                <Pressable
-                  style={[
-                    styles.primaryButton,
-                    (cloudUnavailable || loading) && styles.primaryButtonDisabled,
-                  ]}
-                  onPress={handleSendCode}
+                <PillButton
+                  label={loading ? 'Sending' : 'Send code'}
+                  onPress={() => void handleSendCode()}
                   disabled={cloudUnavailable || loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>Send code</Text>
-                  )}
-                </Pressable>
+                  style={styles.submitButton}
+                />
               </>
             ) : (
               <>
@@ -198,20 +188,12 @@ export default function SignIn() {
 
                 {error && <Text style={styles.errorText}>{error}</Text>}
 
-                <Pressable
-                  style={[
-                    styles.primaryButton,
-                    (cloudUnavailable || loading) && styles.primaryButtonDisabled,
-                  ]}
-                  onPress={handleVerify}
+                <PillButton
+                  label={loading ? 'Verifying' : 'Verify'}
+                  onPress={() => void handleVerify()}
                   disabled={cloudUnavailable || loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>Verify</Text>
-                  )}
-                </Pressable>
+                  style={styles.submitButton}
+                />
 
                 <Pressable
                   style={styles.linkButton}
@@ -287,8 +269,7 @@ const styles = StyleSheet.create({
   inputHost: {
     backgroundColor: colors.bgInput,
     borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...sticker.border,
     marginBottom: spacing.md,
   },
   inputInner: {
@@ -309,20 +290,8 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     marginBottom: spacing.md,
   },
-  primaryButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
+  submitButton: {
     marginTop: spacing.sm,
-  },
-  primaryButtonDisabled: {
-    opacity: 0.5,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: fontSize.lg,
-    fontWeight: '700',
   },
   linkButton: {
     alignItems: 'center',

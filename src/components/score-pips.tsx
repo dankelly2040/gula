@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
-import { colors, spacing, fontSize, radii } from '../constants/theme';
+import { colors, spacing, fontSize, radii, sticker } from '../constants/theme';
 
 type Props = {
   label: string;
@@ -67,15 +67,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: radii.sm,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...sticker.border,
+    // Unfilled pips keep a ghosted ink outline so the filled run pops.
+    borderColor: 'rgba(44,30,18,0.25)',
   },
   pipActive: {
-    backgroundColor: colors.brand + '30',
-    borderColor: colors.brand,
+    backgroundColor: colors.brand,
+    borderColor: colors.ink,
   },
   pipText: {
     fontSize: fontSize.md,
@@ -83,6 +84,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   pipTextActive: {
-    color: colors.brand,
+    color: colors.surface,
   },
 });

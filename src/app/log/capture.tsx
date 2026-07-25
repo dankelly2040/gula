@@ -14,54 +14,14 @@ import {
   type FlashMode,
 } from 'expo-camera';
 import { useDraftLogStore } from '../../state/draft-log';
+import { CircleButton, PillButton } from '../../components/sticker';
 import { colors, spacing, fontSize, radii } from '../../constants/theme';
 
 // Sticker-card chrome, scoped to the capture moment: mustard frame, hard
 // offset shadows, chunky white utility circles, one big pill action.
-const FRAME = '#EBC257';
-const INK = colors.textPrimary;
-const WHITE = '#FFFEF7';
-
-function CircleButton({
-  onPress,
-  children,
-}: {
-  onPress: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <Pressable onPress={onPress} hitSlop={6}>
-      {({ pressed }) => (
-        <View style={[styles.circleButton, pressed && styles.pressedDown]}>{children}</View>
-      )}
-    </Pressable>
-  );
-}
-
-function PillButton({
-  onPress,
-  disabled,
-  icon,
-  label,
-}: {
-  onPress: () => void;
-  disabled?: boolean;
-  icon: string;
-  label: string;
-}) {
-  return (
-    <Pressable onPress={onPress} disabled={disabled}>
-      {({ pressed }) => (
-        <View
-          style={[styles.pillButton, pressed && styles.pressedDown, disabled && styles.pillDisabled]}
-        >
-          <SymbolView name={icon as never} size={18} tintColor={WHITE} />
-          <Text style={styles.pillText}>{label}</Text>
-        </View>
-      )}
-    </Pressable>
-  );
-}
+const FRAME = colors.frame;
+const INK = colors.ink;
+const WHITE = colors.surface;
 
 function StickerCard({ badge, children }: { badge: string; children: ReactNode }) {
   return (
@@ -371,51 +331,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.lg,
     marginTop: spacing.xl,
-  },
-  circleButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: WHITE,
-    borderWidth: 1.5,
-    borderColor: INK,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: INK,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 0,
-    elevation: 6,
-  },
-  pillButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.brand,
-    borderRadius: radii.full,
-    borderWidth: 1.5,
-    borderColor: INK,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    shadowColor: INK,
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 0,
-    elevation: 6,
-  },
-  pillDisabled: {
-    opacity: 0.6,
-  },
-  pillText: {
-    color: WHITE,
-    fontSize: fontSize.md,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  pressedDown: {
-    transform: [{ translateY: 3 }],
-    shadowOffset: { width: 0, height: 2 },
   },
   skip: {
     marginTop: spacing.lg,

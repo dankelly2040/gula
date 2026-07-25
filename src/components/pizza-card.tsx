@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { colors, spacing, fontSize, radii } from '../constants/theme';
+import { colors, spacing, fontSize, radii, sticker } from '../constants/theme';
 import { getZoneForScore } from '../constants/enums';
 import type { PizzaLog } from '../db/types';
 
@@ -78,12 +78,12 @@ export function PizzaCard({ log, rank }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.surface,
     borderRadius: radii.lg,
     overflow: 'hidden',
     flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...sticker.border,
+    ...sticker.shadowSm,
   },
   // Neutral by default; gold is reserved for the top slice only.
   rankBadge: {
@@ -96,8 +96,10 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     zIndex: 1,
   },
+  // Top slice earns the full sticker: gold tint plus ink outline.
   rankBadgeFirst: {
     backgroundColor: colors.gold + '20',
+    ...sticker.border,
   },
   rankText: {
     fontSize: fontSize.xs,

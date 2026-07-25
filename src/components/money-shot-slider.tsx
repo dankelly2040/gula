@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { MONEY_SHOT_ZONES, getZoneForScore } from '../constants/enums';
-import { colors, spacing, fontSize, radii } from '../constants/theme';
+import { colors, spacing, fontSize, radii, sticker } from '../constants/theme';
 
 type Props = {
   value: number;
@@ -173,14 +173,10 @@ const styles = StyleSheet.create({
     width: THUMB_SIZE,
     height: THUMB_SIZE,
     borderRadius: THUMB_SIZE / 2,
-    borderWidth: 3,
-    // White border is fine here: it sits on the zone-colored thumb fill.
-    borderColor: '#fff',
-    shadowColor: colors.textPrimary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 5,
+    // Ink ring plus hard offset shadow keeps the thumb in the sticker language.
+    borderWidth: 2,
+    borderColor: colors.ink,
+    ...sticker.shadowSm,
   },
   zoneLabels: {
     flexDirection: 'row',

@@ -28,7 +28,8 @@ import {
   PRICE_TIERS,
   COMMON_TOPPINGS,
 } from '../../constants/enums';
-import { colors, spacing, fontSize, radii } from '../../constants/theme';
+import { PillButton, StickerChip } from '../../components/sticker';
+import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
 
 // Sentinel tag for the "no selection" row in menu pickers. Native `tag`
 // values must be string | number, so null is represented explicitly.
@@ -227,23 +228,12 @@ export default function Details() {
         <Text style={styles.sectionLabel}>Toppings</Text>
         <View style={styles.chipRow}>
           {COMMON_TOPPINGS.map((t) => (
-            <Pressable
+            <StickerChip
               key={t}
-              style={[
-                styles.chip,
-                draft.tags.toppings.includes(t) && styles.chipActive,
-              ]}
+              label={t}
+              selected={draft.tags.toppings.includes(t)}
               onPress={() => toggleTopping(t)}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  draft.tags.toppings.includes(t) && styles.chipTextActive,
-                ]}
-              >
-                {t}
-              </Text>
-            </Pressable>
+            />
           ))}
         </View>
 
@@ -281,12 +271,12 @@ export default function Details() {
       </ScrollView>
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing.lg }]}>
-        <Pressable style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
-          <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
-          <Text style={styles.saveButtonText}>
-            {editId ? 'Save changes' : 'Save this slice'}
-          </Text>
-        </Pressable>
+        <PillButton
+          label={editId ? 'Save changes' : 'Save it'}
+          icon="checkmark"
+          onPress={() => void handleSave()}
+          disabled={isSaving}
+        />
       </View>
     </View>
   );
@@ -329,8 +319,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     fontSize: fontSize.md,
     color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...sticker.border,
   },
   textArea: {
     minHeight: 80,
@@ -341,41 +330,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm + spacing.xs,
   },
-  chip: {
-    backgroundColor: colors.bgCard,
-    borderRadius: radii.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: {
-    borderColor: colors.brand,
-    backgroundColor: colors.brand + '20',
-  },
-  chipText: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  chipTextActive: {
-    color: colors.brand,
-  },
   bottom: {
     paddingHorizontal: spacing.lg,
-  },
-  saveButton: {
-    backgroundColor: colors.brand,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: fontSize.lg,
-    fontWeight: '700',
   },
 });

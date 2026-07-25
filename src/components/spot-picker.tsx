@@ -32,7 +32,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDraftLogStore } from '../state/draft-log';
 import { useSpotSearch, useCreateSpot } from '../hooks/use-spots';
 import type { Spot } from '../db/types';
-import { colors, spacing, fontSize, radii } from '../constants/theme';
+import { colors, spacing, fontSize, radii, sticker } from '../constants/theme';
 
 /**
  * Spot picker for the details screen. The collapsed row opens a native
@@ -229,11 +229,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.bgInput,
+    backgroundColor: colors.surface,
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...sticker.border,
+    ...sticker.shadowSm,
     height: 48,
   },
   triggerText: {
@@ -287,9 +287,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     alignSelf: 'flex-start',
-    backgroundColor: colors.bgCard,
-    borderColor: colors.brand,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    ...sticker.border,
+    ...sticker.shadowSm,
     borderRadius: radii.full,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,

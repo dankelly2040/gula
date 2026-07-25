@@ -34,6 +34,46 @@ export const colors = {
   overlay: 'rgba(44, 30, 18, 0.45)',
   danger: '#C0392B',
   success: '#4E7A3A',
+
+  // Sticker language
+  ink: '#2C1E12', // outlines
+  frame: '#EBC257', // mustard card frames
+  surface: '#FFFEF7', // sticker button/card fill
+} as const;
+
+// Neobrutalist sticker treatment: ink outlines + hard offset shadows.
+// Applies to custom RN surfaces only; native surfaces (@expo/ui forms,
+// pickers, sheets, the tab bar) stay native.
+export const sticker = {
+  border: {
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+  },
+  shadow: {
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 0,
+    elevation: 6,
+  },
+  shadowSm: {
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.22,
+    shadowRadius: 0,
+    elevation: 3,
+  },
+  shadowLg: {
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.3,
+    shadowRadius: 0,
+    elevation: 8,
+  },
+  pressed: {
+    transform: [{ translateY: 3 }],
+    shadowOffset: { width: 0, height: 1 },
+  },
 } as const;
 
 export const spacing = {
