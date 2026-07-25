@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { ACHIEVEMENT_DEFS, type AchievementType } from '../db/types';
 import { enableStreakReminders } from '../lib/notifications';
 import { useSessionStore } from '../state/session';
+import { PizzaConfetti } from '../components/pizza-confetti';
 import { colors, spacing, fontSize, radii } from '../constants/theme';
 
 export default function Reward() {
@@ -46,6 +47,7 @@ export default function Reward() {
 
   return (
     <Pressable style={styles.overlay} onPress={isFirst ? undefined : dismiss}>
+      <PizzaConfetti seed={points + unlocked.length * 31} />
       <View
         style={[
           styles.card,
