@@ -18,12 +18,20 @@
         "foregroundImage": "https://agent.expo.dev/static/icon.png",
         "backgroundColor": "#1a1a2e"
       },
-      "package": "com.dannymanning.gula"
+      "package": "com.dannymanning.gula",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA"
+      ]
     },
     "experiments": {
       "reactCompiler": true,
       "inlineModules": {
-        "watchedDirectories": ["src/native"]
+        "watchedDirectories": [
+          "src/native"
+        ]
       }
     },
     "plugins": [
@@ -75,12 +83,12 @@
       "expo-status-bar",
       "expo-maps"
     ],
-    "owner": "jonsamp",
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "927f8541-4e72-4171-b60d-dcd368c9446e"
+        "projectId": "215878b4-2091-4ccb-8a6f-6545863486f0"
       }
-    }
+    },
+    "owner": "dannymanning"
   }
 }
