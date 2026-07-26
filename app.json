@@ -6,9 +6,6 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
-    "web": {
-      "output": "server"
-    },
     "ios": {
       "bundleIdentifier": "com.dannymanning.gula",
       "supportsTablet": false,
