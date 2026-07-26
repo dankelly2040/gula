@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { fetchNearbyPublicLogs, fetchNearbySpots } from '../db/remote-store';
 import { getCurrentCoords, type Coords } from '../lib/location';
 import { searchPizzaPlacesNearby, type PizzaPlace } from '../lib/pizza-places';
@@ -33,18 +33,23 @@ export function useDiscover(coords: Coords | null | undefined) {
   });
 }
 
+export type SearchRegion = Coords & { radiusMeters: number };
+
 /**
- * Nearby pizza places from MapKit local search (display-only; never stored).
- * Fills Discover's cold start until the community spots graph grows.
+ * Pizza places from MapKit local search (display-only; never stored) for a
+ * region: initially around the user, then wherever the map camera settles.
  */
-export function usePizzaPlaces(coords: Coords | null | undefined) {
+export function usePizzaPlaces(region: SearchRegion | null | undefined) {
   return useQuery({
-    queryKey: ['pizza-places', coords?.lat, coords?.lng],
+    queryKey: ['pizza-places', region?.lat, region?.lng, region?.radiusMeters],
     queryFn: async (): Promise<PizzaPlace[]> => {
-      if (!coords) return [];
-      return searchPizzaPlacesNearby(coords.lat, coords.lng);
+      if (!region) return [];
+      return searchPizzaPlacesNearby(region.lat, region.lng, region.radiusMeters);
     },
-    enabled: coords != null,
+    enabled: region != null,
     staleTime: 5 * 60 * 1000,
+    // Keep the previous region's places on screen while the next search runs,
+    // so panning never flashes the map empty.
+    placeholderData: keepPreviousData,
   });
 }

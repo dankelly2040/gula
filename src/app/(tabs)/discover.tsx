@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { SymbolView } from 'expo-symbols';
 import { AppleMaps } from 'expo-maps';
-import { useCurrentLocation, useDiscover, usePizzaPlaces } from '../../hooks/use-discover';
+import {
+  useCurrentLocation,
+  useDiscover,
+  usePizzaPlaces,
+  type SearchRegion,
+} from '../../hooks/use-discover';
 import { useDraftLogStore } from '../../state/draft-log';
 import { getZoneForScore } from '../../constants/enums';
 import { PillButton } from '../../components/sticker';
@@ -44,6 +49,21 @@ function formatDistance(meters: number): string {
   return `${miles.toFixed(1)} mi`;
 }
 
+// Re-search when the map camera settles somewhere meaningfully new.
+const SEARCH_DEBOUNCE_MS = 600;
+const DEFAULT_RADIUS_METERS = 4000;
+
+function radiusForZoom(zoom: number): number {
+  // ~4 km at zoom 13, doubling per zoom-out step, clamped to sane bounds.
+  return Math.min(30000, Math.max(1500, DEFAULT_RADIUS_METERS * 2 ** (13 - zoom)));
+}
+
+function distanceBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const dLat = (a.lat - b.lat) * 111_000;
+  const dLng = (a.lng - b.lng) * 111_000 * Math.cos((a.lat * Math.PI) / 180);
+  return Math.hypot(dLat, dLng);
+}
+
 export default function Discover() {
   const { markInteractive } = useObserve();
   useEffect(() => {
@@ -61,7 +81,37 @@ export default function Discover() {
     refetch: retryLocation,
   } = useCurrentLocation();
   const discover = useDiscover(coords);
-  const placesQuery = usePizzaPlaces(coords);
+
+  // Pizza-place search follows the map camera; it starts at the user.
+  const [searchRegion, setSearchRegion] = useState<SearchRegion | null>(null);
+  const effectiveRegion =
+    searchRegion ?? (coords ? { ...coords, radiusMeters: DEFAULT_RADIUS_METERS } : null);
+  const placesQuery = usePizzaPlaces(effectiveRegion);
+
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSearchedRef = useRef<SearchRegion | null>(null);
+  lastSearchedRef.current = effectiveRegion;
+
+  const handleCameraMove = (event: { coordinates: { latitude?: number; longitude?: number }; zoom: number }) => {
+    const { latitude, longitude } = event.coordinates;
+    if (latitude == null || longitude == null) return;
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => {
+      const next: SearchRegion = {
+        lat: latitude,
+        lng: longitude,
+        radiusMeters: radiusForZoom(event.zoom),
+      };
+      const last = lastSearchedRef.current;
+      // Only re-search when the camera moved meaningfully relative to the area.
+      if (last && distanceBetween(next, last) < Math.max(1000, last.radiusMeters * 0.3)) return;
+      setSearchRegion(next);
+    }, SEARCH_DEBOUNCE_MS);
+  };
+
+  useEffect(() => () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+  }, []);
 
   const logs: PizzaLog[] = discover.data?.logs ?? [];
   const spots: Spot[] = discover.data?.spots ?? [];
@@ -152,8 +202,9 @@ export default function Discover() {
       );
     }
 
-    // Nothing nearby (also covers fetch errors, which fall back to empty lists).
-    if (logs.length === 0 && spots.length === 0 && places.length === 0) {
+    // Nothing nearby (also covers fetch errors, which fall back to empty
+    // lists). Once the user has panned the map, keep it mounted regardless.
+    if (logs.length === 0 && spots.length === 0 && places.length === 0 && searchRegion === null) {
       return (
         <View style={styles.centered}>
           <SymbolView
@@ -183,6 +234,7 @@ export default function Discover() {
             markers={markers}
             properties={{ isMyLocationEnabled: true }}
             uiSettings={{ myLocationButtonEnabled: true, compassEnabled: true }}
+            onCameraMove={handleCameraMove}
             onMarkerClick={(marker) => {
               if (marker.id?.startsWith('spot:')) {
                 router.push(`/spot/${marker.id.slice(5)}`);
