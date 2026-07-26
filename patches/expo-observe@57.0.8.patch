@@ -1,0 +1,16 @@
+diff --git a/ios/ObserveModule.swift b/ios/ObserveModule.swift
+index 5b7a3984a06aa923a03251eaa8f26ff63cb60435..5c9be6ff5030a1bfc38e458e7b8c0621c80e160e 100644
+--- a/ios/ObserveModule.swift
++++ b/ios/ObserveModule.swift
+@@ -57,7 +57,10 @@ public final class ObserveModule: Module {
+ 
+       // Broadcast the integrations config so integration libraries (e.g. expo-image) can activate.
+       self.lastIntegrations = config.integrations ?? [:]
+-      self.emit(event: "configure", payload: ["integrations": self.lastIntegrations])
++      // Swift 6.2.x strict concurrency flags the dictionary as non-Sendable when
++      // crossing into emit; the value is copied immediately, so this is safe.
++      nonisolated(unsafe) let payload: [String: Any] = ["integrations": self.lastIntegrations]
++      self.emit(event: "configure", payload: payload)
+     }
+ 
+     Function("getIntegrations") {

@@ -57,6 +57,7 @@
   },
   "private": true,
   "patchedDependencies": {
-    "expo-modules-jsi@57.0.4": "patches/expo-modules-jsi@57.0.4.patch"
+    "expo-modules-jsi@57.0.4": "patches/expo-modules-jsi@57.0.4.patch",
+    "expo-observe@57.0.8": "patches/expo-observe@57.0.8.patch"
   }
 }
