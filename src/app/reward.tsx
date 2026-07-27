@@ -42,14 +42,14 @@ export default function Reward() {
     }
   }, []);
 
-  // Let the confetti burst own the screen first, then snap the card in:
+  // Let the confetti blast own the screen first, then snap the card in:
   // ease-out entrance from scale 0.95 + slight rise, under 300ms.
   const reducedMotion = useReducedMotion();
   const cardIn = useSharedValue(reducedMotion ? 1 : 0);
   useEffect(() => {
     if (reducedMotion) return;
     cardIn.value = withDelay(
-      800,
+      1600,
       withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) })
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -20,6 +20,28 @@ const TRACK_HEIGHT = 12;
 const THUMB_SIZE = 36;
 const TRACK_PADDING = THUMB_SIZE / 2;
 
+// Smooth track gradient: interpolate across the zone colors so the scale
+// reads as one gradual red-to-green ramp instead of discrete blocks.
+const GRADIENT_SLICES = 32;
+
+function hexToRgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
+}
+
+function lerpZoneColor(t: number): string {
+  const stops = MONEY_SHOT_ZONES.map((z) => hexToRgb(z.color));
+  const scaled = t * (stops.length - 1);
+  const i = Math.min(stops.length - 2, Math.floor(scaled));
+  const f = scaled - i;
+  const [r, g, b] = stops[i].map((c, ch) => Math.round(c + (stops[i + 1][ch] - c) * f));
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+const GRADIENT_COLORS = Array.from({ length: GRADIENT_SLICES }, (_, i) =>
+  lerpZoneColor(i / (GRADIENT_SLICES - 1))
+);
+
 // Runs on the UI runtime inside the pan gesture, so it must be a worklet:
 // calling a plain JS closure there throws under react-native-worklets 0.10+.
 function clampValue(x: number, trackWidth: number): number {
@@ -80,17 +102,8 @@ export function MoneyShotSlider({ value, onChange }: Props) {
           onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
         >
           <View style={styles.track}>
-            {MONEY_SHOT_ZONES.map((z) => (
-              <View
-                key={z.label}
-                style={[
-                  styles.zoneSegment,
-                  {
-                    backgroundColor: z.color,
-                    flex: z.max - z.min,
-                  },
-                ]}
-              />
+            {GRADIENT_COLORS.map((color, i) => (
+              <View key={i} style={[styles.zoneSegment, { backgroundColor: color, flex: 1 }]} />
             ))}
           </View>
 

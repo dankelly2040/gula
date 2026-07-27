@@ -15,9 +15,9 @@ import Animated, {
 // single-progress-value architecture as the animated splash: one shared
 // value drives every particle via per-particle constants.
 
-const DURATION_MS = 1900;
-const COUNT = 72;
-const GRAVITY = 1350; // px/s^2
+const DURATION_MS = 3000;
+const COUNT = 220;
+const GRAVITY = 1050; // px/s^2
 
 const CHEESE = '#F6C445';
 const CHEESE_LIGHT = '#F1E599';
@@ -41,26 +41,42 @@ type ParticleSpec = {
   kind: 'slice' | 'pepperoni' | 'cheese' | 'crust';
   size: number;
   color: string;
+  ox: number; // origin as a fraction of screen width
+  oy: number; // origin as a fraction of screen height
   vx: number; // px/s
   vy: number; // px/s (negative = up)
   spin: number; // total radians over the flight
   delay: number; // 0-1 fraction of DURATION when this particle appears
 };
 
+// Three cannons: bottom-left and bottom-right firing inward and up,
+// plus a center burst, so the blast covers the whole screen.
+const CANNONS = [
+  { ox: 0.06, oy: 0.98, baseAngle: -Math.PI / 2 + 0.55, spread: 0.55 },
+  { ox: 0.94, oy: 0.98, baseAngle: -Math.PI / 2 - 0.55, spread: 0.55 },
+  { ox: 0.5, oy: 0.95, baseAngle: -Math.PI / 2, spread: 0.9 },
+] as const;
+
 function buildParticles(seed: number): ParticleSpec[] {
   const rng = mulberry32(seed);
   const specs: ParticleSpec[] = [];
   for (let i = 0; i < COUNT; i++) {
     const roll = rng();
+    // Pepperoni-forward mix: it is a pizza celebration.
     const kind =
-      roll < 0.25 ? 'slice' : roll < 0.55 ? 'pepperoni' : roll < 0.85 ? 'cheese' : 'crust';
-    // Radial burst, biased upward like a popped cork.
-    const angle = -Math.PI / 2 + (rng() - 0.5) * Math.PI * 1.15;
-    const speed = 420 + rng() * 620;
+      roll < 0.16 ? 'slice' : roll < 0.58 ? 'pepperoni' : roll < 0.88 ? 'cheese' : 'crust';
+    const cannon = CANNONS[i % CANNONS.length];
+    const angle = cannon.baseAngle + (rng() - 0.5) * cannon.spread * 2;
+    const speed = 750 + rng() * 750;
     specs.push({
       key: i,
       kind,
-      size: kind === 'slice' ? 10 + rng() * 6 : 5 + rng() * 5,
+      size:
+        kind === 'slice'
+          ? 11 + rng() * 7
+          : kind === 'pepperoni'
+            ? 8 + rng() * 8
+            : 5 + rng() * 5,
       color:
         kind === 'pepperoni'
           ? PEPPERONI
@@ -69,10 +85,12 @@ function buildParticles(seed: number): ParticleSpec[] {
             : rng() > 0.25
               ? CHEESE
               : CHEESE_LIGHT,
+      ox: cannon.ox,
+      oy: cannon.oy,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
-      spin: (rng() - 0.5) * 22,
-      delay: rng() * 0.08,
+      spin: (rng() - 0.5) * 24,
+      delay: rng() * 0.14,
     });
   }
   return specs;
@@ -81,19 +99,19 @@ function buildParticles(seed: number): ParticleSpec[] {
 function Particle({
   spec,
   progress,
-  originX,
-  originY,
+  width,
+  height,
 }: {
   spec: ParticleSpec;
   progress: SharedValue<number>;
-  originX: number;
-  originY: number;
+  width: number;
+  height: number;
 }) {
   const style = useAnimatedStyle(() => {
     const t = Math.max(0, progress.value - spec.delay) * (DURATION_MS / 1000);
-    const x = originX + spec.vx * t;
-    const y = originY + spec.vy * t + 0.5 * GRAVITY * t * t;
-    const opacity = interpolate(progress.value, [0, 0.05, 0.75, 1], [0, 1, 1, 0]);
+    const x = spec.ox * width + spec.vx * t;
+    const y = spec.oy * height + spec.vy * t + 0.5 * GRAVITY * t * t;
+    const opacity = interpolate(progress.value, [0, 0.04, 0.82, 1], [0, 1, 1, 0]);
     return {
       opacity,
       transform: [
@@ -182,13 +200,7 @@ export function PizzaConfetti({
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       {particles.map((spec) => (
-        <Particle
-          key={spec.key}
-          spec={spec}
-          progress={progress}
-          originX={width / 2}
-          originY={height * 0.45}
-        />
+        <Particle key={spec.key} spec={spec} progress={progress} width={width} height={height} />
       ))}
     </View>
   );

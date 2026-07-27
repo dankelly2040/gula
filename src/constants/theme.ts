@@ -21,13 +21,14 @@ export const colors = {
   // Reserved accents
   gold: '#A06E08', // points and Nirvana only; deepened to hold contrast on the yellow ground
 
-  // Score zones (Vom to Nirvana), tuned for the light ground
-  zoneVom: '#8C1A0F',
-  zoneRegret: '#C43C24',
-  zoneFine: '#DD7E1C',
-  zoneCrave: '#E0A616',
-  zoneBliss: '#75A24E',
-  zoneNirvana: '#C89B08',
+  // Score zones (Vom to Nirvana): one monotonic ramp, red to orange to
+  // yellow to green, so the slider reads as a single gradual scale.
+  zoneVom: '#B02315',
+  zoneRegret: '#CC5A1D',
+  zoneFine: '#DD8A1A',
+  zoneCrave: '#D9B516',
+  zoneBliss: '#93B23A',
+  zoneNirvana: '#4E9142',
 
   // Utility
   border: '#E2D488',
