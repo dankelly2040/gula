@@ -168,8 +168,11 @@ export default function Details() {
       return;
     }
     draft.reset();
+    const breakdown = encodeURIComponent(
+      rewards.breakdown.map((line) => `${line.label}:${line.points}`).join('|')
+    );
     router.replace(
-      `/reward?points=${rewards.points}&first=${rewards.isFirstLog ? 1 : 0}&achievements=${rewards.newAchievements.map((a) => a.type).join(',')}`
+      `/reward?points=${rewards.points}&first=${rewards.isFirstLog ? 1 : 0}&achievements=${rewards.newAchievements.map((a) => a.type).join(',')}&breakdown=${breakdown}`
     );
   };
 
