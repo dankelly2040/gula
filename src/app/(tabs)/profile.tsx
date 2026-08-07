@@ -212,6 +212,15 @@ export default function Profile() {
 
         <ActiveDaysCalendar logs={allLogs} />
 
+        <Pressable style={styles.leaderboardRow} onPress={() => router.push('/leaderboard')}>
+          <SymbolView name="trophy.fill" size={22} tintColor={colors.gold} />
+          <View style={styles.leaderboardText}>
+            <Text style={styles.leaderboardTitle}>Leaderboard</Text>
+            <Text style={styles.leaderboardSubtitle}>See how you rank this month</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Pressable>
+
         <View style={styles.badges}>
           <Text style={styles.sectionTitle}>Badges</Text>
           <View style={styles.badgeGrid}>
@@ -413,6 +422,30 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     color: colors.textMuted,
     fontWeight: '600',
+  },
+  leaderboardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginBottom: spacing.xl,
+    ...sticker.border,
+    ...sticker.shadowSm,
+  },
+  leaderboardText: {
+    flex: 1,
+    gap: 2,
+  },
+  leaderboardTitle: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  leaderboardSubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
   },
   sectionTitle: {
     fontSize: fontSize.lg,

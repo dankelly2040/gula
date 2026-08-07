@@ -225,6 +225,61 @@ export async function fetchNearbyPublicLogs(lat: number, lng: number, radiusKm =
   return (data as LogRow[]).map(rowToLog);
 }
 
+// ── leaderboard ─────────────────────────────────────────────────────────────
+
+export type LeaderboardEntry = {
+  rank: number;
+  userId: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  points: number;
+  logs: number;
+};
+
+type LeaderboardRow = {
+  rank: number;
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  points: number;
+  logs: number;
+};
+
+function rowToEntry(row: LeaderboardRow): LeaderboardEntry {
+  return {
+    rank: row.rank,
+    userId: row.user_id,
+    displayName: row.display_name,
+    avatarUrl: row.avatar_url,
+    points: row.points,
+    logs: row.logs,
+  };
+}
+
+export async function fetchAllTimeLeaderboard(limit = 100): Promise<LeaderboardEntry[]> {
+  const { data, error } = await supabase.rpc('leaderboard_all_time', { limit_count: limit });
+  if (error) throw new Error(error.message);
+  return (data as LeaderboardRow[]).map(rowToEntry);
+}
+
+/**
+ * Ranked points for a time window. Callers pass local boundaries so the board
+ * agrees with the active-days calendar, which is keyed on local dates.
+ */
+export async function fetchRangeLeaderboard(
+  start: Date,
+  end: Date,
+  limit = 100
+): Promise<LeaderboardEntry[]> {
+  const { data, error } = await supabase.rpc('leaderboard_range', {
+    range_start: start.toISOString(),
+    range_end: end.toISOString(),
+    limit_count: limit,
+  });
+  if (error) throw new Error(error.message);
+  return (data as LeaderboardRow[]).map(rowToEntry);
+}
+
 // ── achievements ────────────────────────────────────────────────────────────
 
 export async function upsertRemoteAchievement(a: Achievement): Promise<void> {
