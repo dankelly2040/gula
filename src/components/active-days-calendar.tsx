@@ -203,11 +203,16 @@ function buildWeeks(
   for (let i = 0; i < totalCells; i += 1) {
     const date = new Date(year, month, 1 - startOffset + i);
     const key = dayKey(date);
+    const inMonth = date.getMonth() === month;
     cells.push({
       date,
       key,
-      inMonth: date.getMonth() === month,
-      active: active.has(key),
+      inMonth,
+      // Leading and trailing days belong to the neighbouring month, so they
+      // never count as active here. Marking them at the source keeps the day
+      // fills, the run bars and the week ticks agreeing with the "Active
+      // days" total, which is already scoped to this month.
+      active: inMonth && active.has(key),
       isToday: key === todayKey,
     });
   }
