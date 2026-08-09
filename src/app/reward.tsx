@@ -26,6 +26,7 @@ export default function Reward() {
     points?: string;
     first?: string;
     achievements?: string;
+    breakdown?: string;
   }>();
   const isAnonymous = useSessionStore((s) => s.isAnonymous);
   const markAccountPromptSeen = useSessionStore((s) => s.markAccountPromptSeen);
@@ -35,6 +36,16 @@ export default function Reward() {
   const unlocked = (params.achievements ?? '')
     .split(',')
     .filter((t): t is AchievementType => t in ACHIEVEMENT_DEFS);
+
+  // Itemized so a bigger-than-usual award explains itself.
+  const breakdown = (params.breakdown ?? '')
+    .split('|')
+    .filter(Boolean)
+    .map((entry) => {
+      const idx = entry.lastIndexOf(':');
+      return { label: entry.slice(0, idx), points: Number(entry.slice(idx + 1)) };
+    })
+    .filter((line) => line.label && Number.isFinite(line.points));
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
@@ -95,6 +106,17 @@ export default function Reward() {
           {isFirst ? 'Your first pizza is in the books' : 'Pizza logged!'}
         </Text>
         <Text style={styles.points}>+{points} points</Text>
+
+        {breakdown.length > 1 && (
+          <View style={styles.breakdown}>
+            {breakdown.map((line) => (
+              <View key={line.label} style={styles.breakdownRow}>
+                <Text style={styles.breakdownLabel}>{line.label}</Text>
+                <Text style={styles.breakdownPoints}>+{line.points}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {unlocked.length > 0 && (
           <View style={styles.achievements}>
@@ -189,6 +211,29 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xl,
     fontWeight: '700',
     color: colors.gold,
+  },
+  breakdown: {
+    width: '100%',
+    marginTop: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 3,
+  },
+  breakdownLabel: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  breakdownPoints: {
+    fontSize: fontSize.sm,
+    color: colors.gold,
+    fontWeight: '700',
   },
   achievements: {
     width: '100%',

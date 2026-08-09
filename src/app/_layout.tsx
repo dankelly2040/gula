@@ -81,6 +81,7 @@ function RootLayout() {
             <Stack.Screen name="pizza/[id]" />
             <Stack.Screen name="spot/[id]" />
             <Stack.Screen name="settings" />
+            <Stack.Screen name="leaderboard" />
             <Stack.Screen
               name="reward"
               options={{

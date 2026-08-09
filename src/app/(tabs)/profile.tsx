@@ -16,9 +16,11 @@ import { SymbolView } from 'expo-symbols';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { useProfile, useSaveProfile, useEnsureProfile, useAchievements } from '../../hooks/use-profile';
+import { usePizzaLogs } from '../../hooks/use-pizza-logs';
 import { ACHIEVEMENT_DEFS, type AchievementType } from '../../db/types';
 import { PIZZA_STYLES, type PizzaStyle } from '../../constants/enums';
 import { PillButton, StickerChip } from '../../components/sticker';
+import { ActiveDaysCalendar } from '../../components/active-days-calendar';
 import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
 import { useObserve } from 'expo-observe';
 
@@ -32,6 +34,7 @@ export default function Profile() {
   const router = useRouter();
   const { data: profile } = useProfile();
   const { data: achievements } = useAchievements();
+  const { data: logs } = usePizzaLogs();
   const { ensureProfile } = useEnsureProfile();
   const { mutate: saveProfile } = useSaveProfile();
 
@@ -54,6 +57,13 @@ export default function Profile() {
   };
 
   const displayName = profile?.displayName || 'Pizza enthusiast';
+  const allLogs = logs ?? [];
+  // Streaks live in the calendar below, so the top row stays lifetime totals.
+  const spotsVisited = new Set(
+    allLogs
+      .map((l) => l.spotId ?? l.spotName?.trim().toLowerCase())
+      .filter((s): s is string => Boolean(s))
+  ).size;
   const earnedTypes = new Set(achievements?.map((a) => a.type) ?? []);
   const allBadges = Object.entries(ACHIEVEMENT_DEFS) as [
     AchievementType,
@@ -195,12 +205,21 @@ export default function Profile() {
             <Text style={styles.statLabel}>Total points</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color: colors.brand }]}>
-              {profile?.currentStreak ?? 0}
-            </Text>
-            <Text style={styles.statLabel}>Week streak</Text>
+            <Text style={[styles.statValue, { color: colors.brand }]}>{spotsVisited}</Text>
+            <Text style={styles.statLabel}>Spots visited</Text>
           </View>
         </View>
+
+        <ActiveDaysCalendar logs={allLogs} />
+
+        <Pressable style={styles.leaderboardRow} onPress={() => router.push('/leaderboard')}>
+          <SymbolView name="trophy.fill" size={22} tintColor={colors.gold} />
+          <View style={styles.leaderboardText}>
+            <Text style={styles.leaderboardTitle}>Leaderboard</Text>
+            <Text style={styles.leaderboardSubtitle}>See how you rank this month</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Pressable>
 
         <View style={styles.badges}>
           <Text style={styles.sectionTitle}>Badges</Text>
@@ -403,6 +422,30 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     color: colors.textMuted,
     fontWeight: '600',
+  },
+  leaderboardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginBottom: spacing.xl,
+    ...sticker.border,
+    ...sticker.shadowSm,
+  },
+  leaderboardText: {
+    flex: 1,
+    gap: 2,
+  },
+  leaderboardTitle: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  leaderboardSubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
   },
   sectionTitle: {
     fontSize: fontSize.lg,
