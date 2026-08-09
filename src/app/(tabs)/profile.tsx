@@ -92,11 +92,14 @@ export default function Profile() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.flex}
+      // The safe-area inset sits on the ScrollView's parent so the scroll
+      // frame starts below the status bar and clips there. Padding on the
+      // ScrollView does not clip, which let content ride up over the clock.
+      style={[styles.flex, { paddingTop: insets.top }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
-        style={[styles.container, { paddingTop: insets.top + spacing.lg }]}
+        style={styles.container}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -255,13 +258,18 @@ export default function Profile() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+    backgroundColor: colors.bg,
   },
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-    paddingHorizontal: spacing.lg,
   },
+  // Insets live on the content container, not the ScrollView. Padding does not
+  // clip, so padding the ScrollView itself let content scroll up over the
+  // status bar.
   scrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.xxl,
   },
   headerRow: {

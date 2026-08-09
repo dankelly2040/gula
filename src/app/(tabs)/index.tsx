@@ -1,13 +1,16 @@
 import { View, Text, StyleSheet, FlatList } from 'react-native';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+import * as Haptics from 'expo-haptics';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRankedLogs } from '../../hooks/use-pizza-logs';
 import { useProfile } from '../../hooks/use-profile';
 import { PizzaCard } from '../../components/pizza-card';
+import { StatTrio } from '../../components/stat-trio';
 import { PillButton, StickerChip } from '../../components/sticker';
-import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
+import { colors, spacing, fontSize } from '../../constants/theme';
 import { useObserve } from 'expo-observe';
 
 type SortKey = 'moneyShot' | 'pizzaScore' | 'date';
@@ -32,47 +35,54 @@ export default function Activity() {
   const totalPoints = logs.reduce((sum, l) => sum + l.pointsEarned, 0);
   const streak = profile?.currentStreak ?? 0;
 
+  // Bumped on every visit to the tab so the stats replay their landing.
+  const [runId, setRunId] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      setRunId((n) => n + 1);
+    }, [])
+  );
+
+  const pickSort = (key: SortKey) => {
+    if (key === sortBy) return;
+    if (process.env.EXPO_OS === 'ios') {
+      void Haptics.selectionAsync();
+    }
+    setSortBy(key);
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
-      <Text style={styles.title}>Pizza stats</Text>
+      {/* Animated.View, not Animated.Text: an entering animation on
+          Animated.Text leaves the glyphs stuck at opacity 0 here. */}
+      <Animated.View key={`title-${runId}`} entering={FadeInDown.duration(320)}>
+        <Text style={styles.title}>Let&apos;s eat some pizza.</Text>
+      </Animated.View>
 
       {logs.length > 0 && (
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{logs.length}</Text>
-            <Text style={styles.statLabel}>
-              {logs.length === 1 ? 'pizza' : 'pizzas'}
-            </Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={[styles.statValue, { color: colors.gold }]}>
-              {totalPoints}
-            </Text>
-            <Text style={styles.statLabel}>Pizza Points</Text>
-          </View>
-        </View>
-      )}
-
-      {streak >= 1 && (
-        <View style={styles.streakBanner}>
-          <SymbolView name="flame.fill" size={16} tintColor={colors.brand} />
-          <Text style={styles.streakText}>
-            {streak} week streak, keep it alive
-          </Text>
-        </View>
+        <StatTrio
+          pizzas={logs.length}
+          points={totalPoints}
+          streak={streak}
+          runId={runId}
+        />
       )}
 
       {logs.length > 0 && (
-        <View style={styles.sortRow}>
+        <Animated.View
+          key={`sort-${runId}`}
+          entering={FadeInDown.delay(380).duration(320)}
+          style={styles.sortRow}
+        >
           {SORT_OPTIONS.map((opt) => (
             <StickerChip
               key={opt.key}
               label={opt.label}
               selected={sortBy === opt.key}
-              onPress={() => setSortBy(opt.key)}
+              onPress={() => pickSort(opt.key)}
             />
           ))}
-        </View>
+        </Animated.View>
       )}
 
       {logs.length === 0 && !isLoading ? (
@@ -97,10 +107,17 @@ export default function Activity() {
           data={logs}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
-            <PizzaCard
-              log={item}
-              rank={sortBy !== 'date' ? index + 1 : undefined}
-            />
+            // Cap the stagger so a long list does not trickle in forever.
+            <Animated.View
+              entering={FadeInDown.delay(
+                420 + Math.min(index, 6) * 60
+              ).duration(340)}
+            >
+              <PizzaCard
+                log={item}
+                rank={sortBy !== 'date' ? index + 1 : undefined}
+              />
+            </Animated.View>
           )}
           contentContainerStyle={styles.list}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -118,46 +135,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   title: {
-    fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.xl,
-    marginBottom: spacing.md,
-  },
-  stat: {
-    alignItems: 'flex-start',
-    gap: 2,
-  },
-  statValue: {
-    fontSize: fontSize.xxl,
+    fontSize: fontSize.xl,
     fontWeight: '800',
     color: colors.textPrimary,
-  },
-  statLabel: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    fontWeight: '600',
-  },
-  streakBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
     marginBottom: spacing.md,
-    ...sticker.border,
-    ...sticker.shadowSm,
-  },
-  streakText: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    fontWeight: '600',
   },
   sortRow: {
     flexDirection: 'row',
