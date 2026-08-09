@@ -58,7 +58,7 @@ export default function PizzaDetail() {
 
   const handleShare = async () => {
     const spot = log.spotName ?? 'a mystery spot';
-    const message = `I gave ${spot} a ${log.moneyShot}/100 on the money shot. Verdict: ${zone.label}. 🍕 Logged with Gula`;
+    const message = `I gave ${spot} a ${log.moneyShot}/100 on the money shot. Verdict: ${zone.label}. 🍕 Logged with Local Pizza`;
     try {
       await Share.share({ message });
     } catch {

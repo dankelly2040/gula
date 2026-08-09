@@ -65,7 +65,7 @@ export default function Settings() {
       if (!granted) {
         Alert.alert(
           'Notifications are off',
-          'Enable notifications for Gula in system settings to get streak reminders.'
+          'Enable notifications for Local Pizza in system settings to get streak reminders.'
         );
       }
     } else {
@@ -162,7 +162,7 @@ export default function Settings() {
             />
           </Section>
 
-          <Section title="Data" footer={<Text>Gula v1.0.0, built with Expo</Text>}>
+          <Section title="Data" footer={<Text>Local Pizza v1.0.0, built with Expo</Text>}>
             <Button label="Export my data" onPress={() => void handleExport()} />
             <Button label="Clear all data" role="destructive" onPress={handleClearData} />
           </Section>

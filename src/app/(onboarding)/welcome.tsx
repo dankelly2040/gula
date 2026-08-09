@@ -25,7 +25,7 @@ export default function Welcome() {
           tintColor={colors.brand}
           style={styles.logo}
         />
-        <Text style={styles.title}>Gula</Text>
+        <Text style={styles.title}>Local Pizza</Text>
         <Text style={styles.subtitle}>
           Rate every slice from Vom to Nirvana{'\n'}and remember every pizza you eat.
         </Text>

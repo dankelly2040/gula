@@ -182,7 +182,7 @@ export default function Discover() {
           />
           <Text style={styles.emptyTitle}>Find pizza near you</Text>
           <Text style={styles.emptyText}>
-            Gula uses your location to surface public logs and spots worth trying nearby. We only
+            Local Pizza uses your location to surface public logs and spots worth trying nearby. We only
             check while you have Discover open.
           </Text>
           <PillButton onPress={() => retryLocation()} label="Enable location" />

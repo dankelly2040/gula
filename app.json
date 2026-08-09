@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Gula",
+    "name": "Local Pizza",
     "slug": "gula",
     "scheme": "gula",
     "orientation": "portrait",
@@ -55,20 +55,20 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Gula to access your photos to add pizza pics to your logs.",
-          "cameraPermission": "Allow Gula to use your camera to snap your slice."
+          "photosPermission": "Allow Local Pizza to access your photos to add pizza pics to your logs.",
+          "cameraPermission": "Allow Local Pizza to use your camera to snap your slice."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow Gula to use your location to find pizza spots near you."
+          "locationWhenInUsePermission": "Allow Local Pizza to use your location to find pizza spots near you."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Gula to use your camera to snap your slice."
+          "cameraPermission": "Allow Local Pizza to use your camera to snap your slice."
         }
       ],
       [
