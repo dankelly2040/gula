@@ -20,7 +20,7 @@ import {
   fetchRemoteAchievements,
   upsertRemoteAchievement,
 } from './remote-store';
-import { uploadPhoto } from '../lib/images';
+import { uploadPhoto, PhotoUnreadableError } from '../lib/images';
 import { useSessionStore } from '../state/session';
 
 /**
@@ -61,10 +61,19 @@ async function applyOp(op: SyncOp, userId: string): Promise<void> {
       const log = (await getLogs()).find((l) => l.id === op.id);
       if (!log) return;
       let photoUrl = log.photoUrl;
-      if (!photoUrl && log.photoUri) {
-        photoUrl = await uploadPhoto(log.photoUri, userId, log.id);
+      let photoUri = log.photoUri;
+      if (!photoUrl && photoUri) {
+        try {
+          photoUrl = await uploadPhoto(photoUri, userId, log.id);
+        } catch (e) {
+          // A network failure is worth retrying, so let it fail the op and
+          // stay queued. A missing local file never is: without this the op
+          // is retried forever and the log itself never reaches the server.
+          if (!(e instanceof PhotoUnreadableError)) throw e;
+          photoUri = null;
+        }
       }
-      const synced = { ...log, userId, photoUrl };
+      const synced = { ...log, userId, photoUri, photoUrl };
       await upsertRemoteLog(synced);
       const logs = await getLogs();
       await replaceLogs(logs.map((l) => (l.id === op.id ? synced : l)));
