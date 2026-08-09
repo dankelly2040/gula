@@ -76,9 +76,21 @@ def png_bytes(size):
     )
 
 
-BASE = "/Users/dankelly/projects/gula/assets/tab-icon-log"
-for size, suffix in ((25, ""), (50, "@2x"), (75, "@3x")):
-    path = f"{BASE}{suffix}.png"
-    with open(path, "wb") as fh:
-        fh.write(png_bytes(size))
-    print(f"wrote {path} ({size}x{size})")
+import os
+
+ASSETS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
+
+# Two logical sizes: the tab bar item, and the larger glyph for the floating
+# log button. Upscaling one asset for both leaves the button soft.
+SETS = {
+    "tab-icon-log": 25,
+    "log-glyph": 32,
+}
+
+for name, base in SETS.items():
+    for scale, suffix in ((1, ""), (2, "@2x"), (3, "@3x")):
+        size = base * scale
+        path = os.path.join(ASSETS, f"{name}{suffix}.png")
+        with open(path, "wb") as fh:
+            fh.write(png_bytes(size))
+        print(f"wrote {path} ({size}x{size})")
