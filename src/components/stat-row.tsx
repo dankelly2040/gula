@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type TextStyle } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -14,14 +14,25 @@ import Animated, {
 } from 'react-native-reanimated';
 import { colors, fontSize, radii, spacing, sticker } from '../constants/theme';
 
-// Three core stats, Opal-style: icon, big number, small uppercase label.
-// The cards land one after another on every visit to the tab, each with its
-// own tap, so opening My Pizza feels like three stickers being pressed down.
+// A row of core stats, Opal-style: icon well, big number, small uppercase
+// label. The cards land one after another on every visit to the screen, each
+// counting up with its own tap, so arriving feels like stickers being pressed
+// down rather than a static readout.
 
 const STAGGER_MS = 110;
 const COUNT_MS = 750;
 
+export type Stat = {
+  icon: string;
+  /** Defaults to ink. Ember is reserved for things you can tap. */
+  iconColor?: string;
+  value: number;
+  valueColor?: string;
+  label: string;
+};
+
 function tap() {
+  // Simulators have no Taptic Engine, so this is only felt on a device.
   if (process.env.EXPO_OS === 'ios') {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
@@ -35,15 +46,15 @@ function tap() {
  * The AnimatedTextInput `text` prop trick does not apply on the New
  * Architecture, so the number is a plain Text.
  */
-function Counter({
+export function CountUp({
   value,
-  color,
-  delay,
+  style,
+  delay = 0,
   runId,
 }: {
   value: number;
-  color: string;
-  delay: number;
+  style?: TextStyle | TextStyle[];
+  delay?: number;
   runId: number;
 }) {
   const shown = useSharedValue(0);
@@ -66,28 +77,10 @@ function Counter({
     [value, runId]
   );
 
-  return (
-    <Text style={[styles.value, { color }]}>{display}</Text>
-  );
+  return <Text style={style}>{display}</Text>;
 }
 
-function StatCard({
-  icon,
-  iconColor,
-  value,
-  valueColor,
-  label,
-  index,
-  runId,
-}: {
-  icon: string;
-  iconColor: string;
-  value: number;
-  valueColor: string;
-  label: string;
-  index: number;
-  runId: number;
-}) {
+function StatCard({ stat, index, runId }: { stat: Stat; index: number; runId: number }) {
   const enter = useSharedValue(0);
   const delay = index * STAGGER_MS;
 
@@ -113,59 +106,32 @@ function StatCard({
     <Animated.View
       style={[styles.card, style]}
       accessible
-      accessibilityLabel={`${value} ${label}`}
+      accessibilityLabel={`${stat.value} ${stat.label}`}
     >
       <View style={styles.iconWell}>
-        <SymbolView name={icon as never} size={20} tintColor={iconColor} />
+        <SymbolView
+          name={stat.icon as never}
+          size={20}
+          tintColor={stat.iconColor ?? colors.ink}
+        />
       </View>
-      <Counter value={value} color={valueColor} delay={delay} runId={runId} />
-      <Text style={styles.label}>{label}</Text>
+      <CountUp
+        value={stat.value}
+        style={[styles.value, { color: stat.valueColor ?? colors.textPrimary }]}
+        delay={delay}
+        runId={runId}
+      />
+      <Text style={styles.label}>{stat.label}</Text>
     </Animated.View>
   );
 }
 
-export function StatTrio({
-  pizzas,
-  points,
-  streak,
-  runId,
-}: {
-  pizzas: number;
-  points: number;
-  streak: number;
-  runId: number;
-}) {
+export function StatRow({ stats, runId }: { stats: Stat[]; runId: number }) {
   return (
     <View style={styles.row}>
-      <StatCard
-        icon="fork.knife"
-        iconColor={colors.ink}
-        value={pizzas}
-        valueColor={colors.textPrimary}
-        label={pizzas === 1 ? 'Pizza' : 'Pizzas'}
-        index={0}
-        runId={runId}
-      />
-      <StatCard
-        icon="star.fill"
-        iconColor={colors.gold}
-        value={points}
-        valueColor={colors.gold}
-        label="Points"
-        index={1}
-        runId={runId}
-      />
-      <StatCard
-        icon="flame.fill"
-        // Ink, not ember: ember means "tap me", and a stat is not interactive.
-        // That leaves gold as the row's only accent, reserved for points.
-        iconColor={colors.ink}
-        value={streak}
-        valueColor={colors.textPrimary}
-        label="Week streak"
-        index={2}
-        runId={runId}
-      />
+      {stats.map((stat, i) => (
+        <StatCard key={stat.label} stat={stat} index={i} runId={runId} />
+      ))}
     </View>
   );
 }
@@ -184,6 +150,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     borderCurve: 'continuous',
     paddingVertical: spacing.md,
+    // Narrow sides on purpose: at spacing.md a third-width card leaves too
+    // little room for a label like "Slices logged", which then breaks
+    // mid-word.
     paddingHorizontal: spacing.xs,
     ...sticker.border,
     ...sticker.shadow,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { Image } from 'expo-image';
@@ -16,6 +16,8 @@ import { useObserve } from 'expo-observe';
 import { useLeaderboard, type LeaderboardPeriod } from '../../hooks/use-leaderboard';
 import { useSessionStore } from '../../state/session';
 import { PillButton } from '../../components/sticker';
+import { CountUp } from '../../components/stat-row';
+import { FadeUp } from '../../components/fade-up';
 import type { LeaderboardEntry } from '../../db/remote-store';
 import { colors, spacing, fontSize, radii, sticker, gradients } from '../../constants/theme';
 import { LOG_BUTTON_CLEARANCE } from '../../components/log-button';
@@ -35,6 +37,16 @@ export default function Leaderboard() {
   const router = useRouter();
   const userId = useSessionStore((s) => s.userId);
   const [period, setPeriod] = useState<LeaderboardPeriod>('month');
+
+  // Bumped on every visit to the tab so the board replays its landing.
+  // Folding the period in restarts the count when you switch boards.
+  const [visit, setVisit] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      setVisit((n) => n + 1);
+    }, [])
+  );
+  const runId = visit * 2 + (period === 'month' ? 0 : 1);
 
   const { data, isLoading, isError, refetch, isRefetching } = useLeaderboard(period);
   const entries = data ?? [];
@@ -91,8 +103,15 @@ export default function Leaderboard() {
           />
         }
       >
-        {entries.map((entry) => (
-          <Row key={entry.userId} entry={entry} isMe={entry.userId === userId} />
+        {entries.map((entry, i) => (
+          <FadeUp key={entry.userId} runId={runId} delay={Math.min(i, 8) * 70}>
+            <Row
+              entry={entry}
+              isMe={entry.userId === userId}
+              index={i}
+              runId={runId}
+            />
+          </FadeUp>
         ))}
 
         {/* Everyone should be able to find themselves without scrolling. */}
@@ -133,7 +152,17 @@ export default function Leaderboard() {
   );
 }
 
-function Row({ entry, isMe }: { entry: LeaderboardEntry; isMe: boolean }) {
+function Row({
+  entry,
+  isMe,
+  index,
+  runId,
+}: {
+  entry: LeaderboardEntry;
+  isMe: boolean;
+  index: number;
+  runId: number;
+}) {
   const medal = entry.rank <= 3;
   return (
     <View style={[styles.row, isMe && styles.rowMe]}>
@@ -159,7 +188,12 @@ function Row({ entry, isMe }: { entry: LeaderboardEntry; isMe: boolean }) {
         </Text>
       </View>
 
-      <Text style={styles.rowPoints}>{entry.points}</Text>
+      <CountUp
+        value={entry.points}
+        style={styles.rowPoints}
+        delay={Math.min(index, 8) * 70}
+        runId={runId}
+      />
     </View>
   );
 }

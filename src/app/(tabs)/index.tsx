@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRankedLogs } from '../../hooks/use-pizza-logs';
 import { useProfile } from '../../hooks/use-profile';
 import { PizzaCard } from '../../components/pizza-card';
-import { StatTrio } from '../../components/stat-trio';
+import { StatRow } from '../../components/stat-row';
 import { FadeUp } from '../../components/fade-up';
 import { PillButton, StickerChip } from '../../components/sticker';
 import { colors, spacing, fontSize, gradients } from '../../constants/theme';
@@ -60,11 +60,23 @@ export default function Activity() {
       </FadeUp>
 
       {logs.length > 0 && (
-        <StatTrio
-          pizzas={logs.length}
-          points={totalPoints}
-          streak={streak}
+        <StatRow
           runId={runId}
+          stats={[
+            {
+              icon: 'fork.knife',
+              value: logs.length,
+              label: logs.length === 1 ? 'Pizza' : 'Pizzas',
+            },
+            {
+              icon: 'star.fill',
+              iconColor: colors.gold,
+              valueColor: colors.gold,
+              value: totalPoints,
+              label: 'Points',
+            },
+            { icon: 'flame.fill', value: streak, label: 'Week streak' },
+          ]}
         />
       )}
 

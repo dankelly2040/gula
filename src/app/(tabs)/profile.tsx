@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { SymbolView } from 'expo-symbols';
@@ -21,6 +21,7 @@ import { ACHIEVEMENT_DEFS, type AchievementType } from '../../db/types';
 import { PIZZA_STYLES, type PizzaStyle } from '../../constants/enums';
 import { PillButton, StickerChip } from '../../components/sticker';
 import { ActiveDaysCalendar } from '../../components/active-days-calendar';
+import { StatRow } from '../../components/stat-row';
 import { colors, spacing, fontSize, radii, sticker, gradients } from '../../constants/theme';
 import { LOG_BUTTON_CLEARANCE } from '../../components/log-button';
 import { useObserve } from 'expo-observe';
@@ -38,6 +39,14 @@ export default function Profile() {
   const { data: logs } = usePizzaLogs();
   const { ensureProfile } = useEnsureProfile();
   const { mutate: saveProfile } = useSaveProfile();
+
+  // Bumped on every visit to the tab so the stats replay their landing.
+  const [runId, setRunId] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      setRunId((n) => n + 1);
+    }, [])
+  );
 
   const [isEditing, setIsEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
@@ -200,22 +209,21 @@ export default function Profile() {
           </>
         )}
 
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{profile?.totalLogs ?? 0}</Text>
-            <Text style={styles.statLabel}>Slices logged</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color: colors.gold }]}>
-              {profile?.totalPoints ?? 0}
-            </Text>
-            <Text style={styles.statLabel}>Total points</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color: colors.brand }]}>{spotsVisited}</Text>
-            <Text style={styles.statLabel}>Spots visited</Text>
-          </View>
-        </View>
+        <StatRow
+          runId={runId}
+          stats={[
+            { icon: 'fork.knife', value: profile?.totalLogs ?? 0, label: 'Slices' },
+            {
+              icon: 'star.fill',
+              iconColor: colors.gold,
+              valueColor: colors.gold,
+              value: profile?.totalPoints ?? 0,
+              label: 'Points',
+            },
+            // Ink, not ember: ember means "tap me" and a stat is not tappable.
+            { icon: 'mappin.and.ellipse', value: spotsVisited, label: 'Spots' },
+          ]}
+        />
 
         <ActiveDaysCalendar logs={allLogs} />
 
@@ -400,31 +408,6 @@ const styles = StyleSheet.create({
   editActionButton: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    padding: spacing.md,
-    alignItems: 'center',
-    ...sticker.border,
-    ...sticker.shadowSm,
-  },
-  statValue: {
-    fontSize: fontSize.xl,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-    fontWeight: '600',
   },
   sectionTitle: {
     fontSize: fontSize.lg,

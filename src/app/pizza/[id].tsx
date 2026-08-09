@@ -112,9 +112,11 @@ export default function PizzaDetail() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {log.photoUri && (
+        {/* Same fallback as the card: photoUri dies with the app container,
+            photoUrl does not. The edit draft below already does this. */}
+        {(log.photoUri || log.photoUrl) && (
           <Image
-            source={{ uri: log.photoUri }}
+            source={{ uri: (log.photoUri ?? log.photoUrl)! }}
             style={styles.photo}
             contentFit="cover"
           />

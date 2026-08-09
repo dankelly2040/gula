@@ -33,8 +33,15 @@ export function PizzaCard({ log, rank }: Props) {
         </View>
       )}
 
-      {log.photoUri ? (
-        <Image source={{ uri: log.photoUri }} style={styles.photo} contentFit="cover" />
+      {/* Fall back to the uploaded copy: the local file lives in the app
+          container, which iOS renumbers on reinstall, so photoUri goes stale
+          while photoUrl survives. */}
+      {log.photoUri || log.photoUrl ? (
+        <Image
+          source={{ uri: (log.photoUri ?? log.photoUrl)! }}
+          style={styles.photo}
+          contentFit="cover"
+        />
       ) : (
         <View style={[styles.photo, styles.photoPlaceholder]}>
           <SymbolView name="fork.knife" size={32} tintColor={colors.textMuted} />

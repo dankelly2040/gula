@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
+import { SymbolView } from 'expo-symbols';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   useAnimatedStyle,
@@ -12,7 +12,6 @@ import Animated, {
 import { colors, radii, sticker } from '../constants/theme';
 
 const SIZE = 64;
-const GLYPH = 32;
 const LIFT = 50; // clears the tab bar's label row
 
 /**
@@ -70,12 +69,7 @@ export function LogButton() {
         style={{ marginBottom: insets.bottom + LIFT }}
       >
         <Animated.View style={[styles.button, style]}>
-          <Image
-            source={require('../../assets/log-glyph.png')}
-            style={styles.glyph}
-            tintColor={colors.surface}
-            contentFit="contain"
-          />
+          <SymbolView name="plus" size={30} weight="bold" tintColor={colors.surface} />
         </Animated.View>
       </Pressable>
     </View>
@@ -96,9 +90,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand,
     ...sticker.border,
     ...sticker.shadowLg,
-  },
-  glyph: {
-    width: GLYPH,
-    height: GLYPH,
   },
 });
