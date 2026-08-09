@@ -157,7 +157,9 @@ export function StatTrio({
       />
       <StatCard
         icon="flame.fill"
-        iconColor={colors.brand}
+        // Ink, not ember: ember means "tap me", and a stat is not interactive.
+        // That leaves gold as the row's only accent, reserved for points.
+        iconColor={colors.ink}
         value={streak}
         valueColor={colors.textPrimary}
         label="Week streak"
