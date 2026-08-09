@@ -20,12 +20,21 @@ export default function TabsLayout() {
           Disabled keeps this a native tab item that never switches; the
           navigator still emits tabPress, which log-tab.tsx uses to open the
           /log modal (SDK 56+ behavior). */}
-      <NativeTabs.Trigger name="log-tab" disabled>
+      {/* Named explicitly: with a hidden label and a custom PNG there is no
+          text and no SF Symbol left for VoiceOver to fall back on, so the
+          button announced as nothing at all. */}
+      <NativeTabs.Trigger name="log-tab" disabled accessibilityLabel="Log a pizza">
         {/* `hidden` gives an icon-only tab. Omitting the Label entirely does
             not: the tab falls back to the route name and reads "log-tab".
             The text still feeds the accessibility label. */}
         <NativeTabs.Trigger.Label hidden>Log</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="plus.circle.fill" />
+        {/* Slice with the plus knocked out of it. No SF Symbol comes close,
+            and a template PNG gets the same native tinting as the My Pizza
+            tab. Regenerate with `python3 scripts/make-slice-icon.py`. */}
+        <NativeTabs.Trigger.Icon
+          src={require('../../../assets/tab-icon-log.png')}
+          renderingMode="template"
+        />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="leaderboard">
         <NativeTabs.Trigger.Label>Leaderboard</NativeTabs.Trigger.Label>
