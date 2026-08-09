@@ -160,12 +160,16 @@ function WeekRow({ cells }: { cells: Cell[] }) {
       </View>
 
       <View style={styles.checkColumn}>
-        <View style={[styles.weekCheck, weekComplete && styles.weekCheckDone]}>
-          <SymbolView
-            name="checkmark"
-            size={13}
-            tintColor={weekComplete ? colors.surface : colors.textMuted}
-          />
+        {/* An empty week gets the well, not a muted tick: a greyed checkmark
+            still reads as "done" at a glance. */}
+        <View
+          style={[styles.weekCheck, weekComplete && styles.weekCheckDone]}
+          accessible
+          accessibilityLabel={weekComplete ? 'Active week' : 'No pizza this week'}
+        >
+          {weekComplete ? (
+            <SymbolView name="checkmark" size={13} tintColor={colors.surface} />
+          ) : null}
         </View>
       </View>
     </View>
