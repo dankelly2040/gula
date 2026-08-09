@@ -1,5 +1,9 @@
 -- Gula phase 1 schema. Run in the Supabase SQL editor (or `supabase db push`).
 -- Also required (dashboard): Authentication → Sign In / Up → enable "Anonymous sign-ins".
+--
+-- Safe to re-run. Every policy is dropped before it is created, because
+-- `create policy` has no `if not exists` form and a half-applied run would
+-- otherwise leave the file permanently unrunnable.
 
 -- ── profiles ────────────────────────────────────────────────────────────────
 create table if not exists public.profiles (
@@ -18,10 +22,13 @@ create table if not exists public.profiles (
 
 alter table public.profiles enable row level security;
 
+drop policy if exists "profiles are readable by authenticated users" on public.profiles;
 create policy "profiles are readable by authenticated users"
   on public.profiles for select to authenticated using (true);
+drop policy if exists "users manage own profile" on public.profiles;
 create policy "users manage own profile"
   on public.profiles for insert to authenticated with check (id = auth.uid());
+drop policy if exists "users update own profile" on public.profiles;
 create policy "users update own profile"
   on public.profiles for update to authenticated using (id = auth.uid());
 
@@ -42,8 +49,10 @@ create index if not exists spots_lat_lng_idx on public.spots (lat, lng);
 
 alter table public.spots enable row level security;
 
+drop policy if exists "spots are readable by authenticated users" on public.spots;
 create policy "spots are readable by authenticated users"
   on public.spots for select to authenticated using (true);
+drop policy if exists "authenticated users can add spots" on public.spots;
 create policy "authenticated users can add spots"
   on public.spots for insert to authenticated with check (created_by = auth.uid());
 
@@ -75,9 +84,11 @@ create index if not exists pizza_logs_public_idx on public.pizza_logs (is_public
 
 alter table public.pizza_logs enable row level security;
 
+drop policy if exists "users manage own logs" on public.pizza_logs;
 create policy "users manage own logs"
   on public.pizza_logs for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists "public logs are readable" on public.pizza_logs;
 create policy "public logs are readable"
   on public.pizza_logs for select to authenticated using (is_public = true);
 
@@ -92,6 +103,7 @@ create table if not exists public.achievements (
 
 alter table public.achievements enable row level security;
 
+drop policy if exists "users manage own achievements" on public.achievements;
 create policy "users manage own achievements"
   on public.achievements for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
@@ -101,11 +113,14 @@ insert into storage.buckets (id, name, public)
 values ('pizza-photos', 'pizza-photos', true)
 on conflict (id) do nothing;
 
+drop policy if exists "public read pizza photos" on storage.objects;
 create policy "public read pizza photos"
   on storage.objects for select using (bucket_id = 'pizza-photos');
+drop policy if exists "users upload own pizza photos" on storage.objects;
 create policy "users upload own pizza photos"
   on storage.objects for insert to authenticated
   with check (bucket_id = 'pizza-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+drop policy if exists "users update own pizza photos" on storage.objects;
 create policy "users update own pizza photos"
   on storage.objects for update to authenticated
   using (bucket_id = 'pizza-photos' and (storage.foldername(name))[1] = auth.uid()::text);
