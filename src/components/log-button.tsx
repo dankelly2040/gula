@@ -13,6 +13,14 @@ import { colors, radii, sticker } from '../constants/theme';
 
 const SIZE = 64;
 const GLYPH = 32;
+const LIFT = 50; // clears the tab bar's label row
+
+/**
+ * Bottom padding a scrolling tab screen should reserve so its last item can
+ * clear the button. Without it the button sits on top of content, which is
+ * how it covered the calendar on Profile.
+ */
+export const LOG_BUTTON_CLEARANCE = SIZE + LIFT + 16;
 
 /**
  * The log action, floated over the tab bar.
@@ -59,7 +67,7 @@ export function LogButton() {
         // Clear of the bar. Four tabs spread evenly put the centre of the bar
         // between Discover and Leaderboard, so a button sitting down at the
         // label row covers both.
-        style={{ marginBottom: insets.bottom + 50 }}
+        style={{ marginBottom: insets.bottom + LIFT }}
       >
         <Animated.View style={[styles.button, style]}>
           <Image

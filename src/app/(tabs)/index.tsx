@@ -12,6 +12,7 @@ import { StatTrio } from '../../components/stat-trio';
 import { FadeUp } from '../../components/fade-up';
 import { PillButton, StickerChip } from '../../components/sticker';
 import { colors, spacing, fontSize, gradients } from '../../constants/theme';
+import { LOG_BUTTON_CLEARANCE } from '../../components/log-button';
 import { useObserve } from 'expo-observe';
 
 type SortKey = 'moneyShot' | 'pizzaScore' | 'date';
@@ -114,7 +115,10 @@ export default function Activity() {
               />
             </Animated.View>
           )}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[
+            styles.list,
+            { paddingBottom: insets.bottom + LOG_BUTTON_CLEARANCE },
+          ]}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           showsVerticalScrollIndicator={false}
         />
@@ -142,7 +146,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   list: {
-    paddingBottom: spacing.xxl,
   },
   separator: {
     height: spacing.sm,

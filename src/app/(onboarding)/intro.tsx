@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { PillButton } from '../../components/sticker';
-import { colors, spacing, fontSize, radii } from '../../constants/theme';
+import { colors, spacing, fontSize, radii, gradients } from '../../constants/theme';
 
 type Panel = {
   key: string;
@@ -119,6 +119,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+    experimental_backgroundImage: gradients.screen,
   },
   header: {
     flexDirection: 'row',

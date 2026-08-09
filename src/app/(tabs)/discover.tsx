@@ -23,6 +23,7 @@ import { useDraftLogStore } from '../../state/draft-log';
 import { getZoneForScore } from '../../constants/enums';
 import { PillButton } from '../../components/sticker';
 import { colors, spacing, fontSize, radii, sticker, gradients } from '../../constants/theme';
+import { LOG_BUTTON_CLEARANCE } from '../../components/log-button';
 import type { PizzaLog, Spot } from '../../db/types';
 import type { PizzaPlace } from '../../lib/pizza-places';
 import { useObserve } from 'expo-observe';
@@ -251,7 +252,10 @@ export default function Discover() {
     return (
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: insets.bottom + LOG_BUTTON_CLEARANCE },
+        ]}
       >
         {logs.length > 0 && (
           <>
@@ -453,7 +457,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    paddingBottom: spacing.xxl,
   },
   sectionTitle: {
     fontSize: fontSize.lg,

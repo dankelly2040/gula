@@ -21,7 +21,7 @@ import { signOut } from '../lib/auth';
 import { enableStreakReminders } from '../lib/notifications';
 import { useEnsureProfile, useSaveProfile, useAchievements } from '../hooks/use-profile';
 import { usePizzaLogs } from '../hooks/use-pizza-logs';
-import { colors, spacing, fontSize } from '../constants/theme';
+import { colors, spacing, fontSize, gradients } from '../constants/theme';
 
 export default function Settings() {
   const router = useRouter();
@@ -176,6 +176,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+    experimental_backgroundImage: gradients.screen,
   },
   header: {
     flexDirection: 'row',

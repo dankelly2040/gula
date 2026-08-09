@@ -22,6 +22,7 @@ import { PIZZA_STYLES, type PizzaStyle } from '../../constants/enums';
 import { PillButton, StickerChip } from '../../components/sticker';
 import { ActiveDaysCalendar } from '../../components/active-days-calendar';
 import { colors, spacing, fontSize, radii, sticker, gradients } from '../../constants/theme';
+import { LOG_BUTTON_CLEARANCE } from '../../components/log-button';
 import { useObserve } from 'expo-observe';
 
 export default function Profile() {
@@ -100,7 +101,10 @@ export default function Profile() {
     >
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + LOG_BUTTON_CLEARANCE },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerRow}>
@@ -262,7 +266,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-    paddingBottom: spacing.xxl,
   },
   headerRow: {
     flexDirection: 'row',

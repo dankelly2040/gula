@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PillButton, StickerChip } from '../../components/sticker';
-import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
+import { colors, spacing, fontSize, radii, sticker, gradients } from '../../constants/theme';
 import { PIZZA_STYLES, type PizzaStyle } from '../../constants/enums';
 import { useSessionStore } from '../../state/session';
 import { useEnsureProfile, useSaveProfile } from '../../hooks/use-profile';
@@ -105,6 +105,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+    experimental_backgroundImage: gradients.screen,
   },
   scroll: {
     flex: 1,

@@ -11,7 +11,7 @@ import { PizzaCard } from '../../components/pizza-card';
 import { useDraftLogStore } from '../../state/draft-log';
 import { supabase } from '../../lib/supabase';
 import { PillButton } from '../../components/sticker';
-import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
+import { colors, spacing, fontSize, radii, sticker, gradients } from '../../constants/theme';
 import type { Spot } from '../../db/types';
 import type { DiscoverData } from '../../hooks/use-discover';
 
@@ -122,6 +122,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+    experimental_backgroundImage: gradients.screen,
   },
   header: {
     flexDirection: 'row',

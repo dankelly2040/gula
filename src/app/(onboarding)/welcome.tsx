@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { PillButton } from '../../components/sticker';
-import { colors, spacing, fontSize } from '../../constants/theme';
+import { colors, spacing, fontSize, gradients } from '../../constants/theme';
 import { useEffect } from 'react';
 import { useObserve } from 'expo-observe';
 
@@ -60,6 +60,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+    experimental_backgroundImage: gradients.screen,
   },
   hero: {
     flex: 1,

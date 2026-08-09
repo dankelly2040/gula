@@ -15,7 +15,7 @@ import {
 } from 'expo-camera';
 import { useDraftLogStore } from '../../state/draft-log';
 import { CircleButton, PillButton } from '../../components/sticker';
-import { colors, spacing, fontSize, radii } from '../../constants/theme';
+import { colors, spacing, fontSize, radii, gradients } from '../../constants/theme';
 
 // Sticker-card chrome, scoped to the capture moment: mustard frame, hard
 // offset shadows, chunky white utility circles, one big pill action.
@@ -221,6 +221,7 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
+    experimental_backgroundImage: gradients.screen,
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
   },

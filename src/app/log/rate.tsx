@@ -9,7 +9,7 @@ import { ScorePips } from '../../components/score-pips';
 import { useDraftLogStore } from '../../state/draft-log';
 import { SEND_FRIEND_OPTIONS } from '../../constants/enums';
 import { PillButton, StickerChip } from '../../components/sticker';
-import { colors, spacing, fontSize } from '../../constants/theme';
+import { colors, spacing, fontSize, gradients } from '../../constants/theme';
 
 export default function Rate() {
   const router = useRouter();
@@ -155,6 +155,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+    experimental_backgroundImage: gradients.screen,
   },
   header: {
     flexDirection: 'row',

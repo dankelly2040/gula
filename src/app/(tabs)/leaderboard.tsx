@@ -18,6 +18,7 @@ import { useSessionStore } from '../../state/session';
 import { PillButton } from '../../components/sticker';
 import type { LeaderboardEntry } from '../../db/remote-store';
 import { colors, spacing, fontSize, radii, sticker, gradients } from '../../constants/theme';
+import { LOG_BUTTON_CLEARANCE } from '../../components/log-button';
 
 const PERIODS: { key: LeaderboardPeriod; label: string }[] = [
   { key: 'month', label: 'This month' },
@@ -78,7 +79,10 @@ export default function Leaderboard() {
     return (
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: insets.bottom + LOG_BUTTON_CLEARANCE },
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -228,7 +232,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   listContent: {
-    paddingBottom: spacing.xxl,
   },
   row: {
     flexDirection: 'row',

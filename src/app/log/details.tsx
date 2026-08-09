@@ -29,7 +29,7 @@ import {
   COMMON_TOPPINGS,
 } from '../../constants/enums';
 import { PillButton, StickerChip } from '../../components/sticker';
-import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
+import { colors, spacing, fontSize, radii, sticker, gradients } from '../../constants/theme';
 
 // Sentinel tag for the "no selection" row in menu pickers. Native `tag`
 // values must be string | number, so null is represented explicitly.
@@ -289,6 +289,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+    experimental_backgroundImage: gradients.screen,
   },
   header: {
     flexDirection: 'row',

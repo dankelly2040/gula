@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors, spacing, fontSize, radii } from '../constants/theme';
+import { colors, spacing, fontSize, radii, gradients } from '../constants/theme';
 
 export default function NotFound() {
   const router = useRouter();
@@ -20,6 +20,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+    experimental_backgroundImage: gradients.screen,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
