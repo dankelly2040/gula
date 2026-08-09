@@ -470,8 +470,13 @@ const styles = StyleSheet.create({
   badge: {
     backgroundColor: colors.surface,
     borderRadius: radii.md,
-    padding: spacing.md,
+    borderCurve: 'continuous',
+    // Narrow side padding on purpose: at spacing.md the text box was too
+    // tight for "Connoisseur", which broke mid-word rather than wrapping.
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
     alignItems: 'center',
+    justifyContent: 'center',
     width: 100,
     ...sticker.border,
     ...sticker.shadowSm,
