@@ -10,15 +10,14 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { SymbolView } from 'expo-symbols';
 import { Image } from 'expo-image';
 import { useObserve } from 'expo-observe';
-import { useLeaderboard, type LeaderboardPeriod } from '../hooks/use-leaderboard';
-import { useSessionStore } from '../state/session';
-import { PillButton } from '../components/sticker';
-import type { LeaderboardEntry } from '../db/remote-store';
-import { colors, spacing, fontSize, radii, sticker } from '../constants/theme';
+import { useLeaderboard, type LeaderboardPeriod } from '../../hooks/use-leaderboard';
+import { useSessionStore } from '../../state/session';
+import { PillButton } from '../../components/sticker';
+import type { LeaderboardEntry } from '../../db/remote-store';
+import { colors, spacing, fontSize, radii, sticker, gradients } from '../../constants/theme';
 
 const PERIODS: { key: LeaderboardPeriod; label: string }[] = [
   { key: 'month', label: 'This month' },
@@ -108,13 +107,8 @@ export default function Leaderboard() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
-      <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} hitSlop={10}>
-          <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
-        </Pressable>
-        <Text style={styles.title}>Leaderboard</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      {/* A tab root has nowhere to go back to, so the title stands alone. */}
+      <Text style={styles.title}>Leaderboard</Text>
 
       <View style={styles.segmentRow}>
         {PERIODS.map((p) => (
@@ -170,21 +164,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+    experimental_backgroundImage: gradients.screen,
     paddingHorizontal: spacing.lg,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.lg,
   },
   title: {
     fontSize: fontSize.xl,
     fontWeight: '800',
     color: colors.textPrimary,
-  },
-  headerSpacer: {
-    width: 26,
+    marginBottom: spacing.lg,
   },
   segmentRow: {
     flexDirection: 'row',

@@ -77,6 +77,20 @@ export const sticker = {
   },
 } as const;
 
+// Screen wash. The flat #FAF1B2 ground read as a single sheet of card; this
+// lifts it into daylight: paler butter at the top, deeper at the bottom, with
+// a soft mustard bloom in the upper right. Mustard rather than ember, because
+// ember is reserved for things you can tap.
+//
+// CSS gradients need the New Architecture. Gula is Fabric-only, so this is
+// safe; do not swap in expo-linear-gradient.
+export const gradients = {
+  screen: [
+    'radial-gradient(ellipse 110% 70% at 85% 0%, rgba(235, 194, 87, 0.45) 0%, rgba(235, 194, 87, 0) 62%)',
+    'linear-gradient(to bottom, #FDF8D6 0%, #FAF1B2 42%, #F2E29A 100%)',
+  ].join(', '),
+} as const;
+
 export const spacing = {
   xs: 4,
   sm: 8,

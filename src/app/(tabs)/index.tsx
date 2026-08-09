@@ -9,8 +9,9 @@ import { useRankedLogs } from '../../hooks/use-pizza-logs';
 import { useProfile } from '../../hooks/use-profile';
 import { PizzaCard } from '../../components/pizza-card';
 import { StatTrio } from '../../components/stat-trio';
+import { FadeUp } from '../../components/fade-up';
 import { PillButton, StickerChip } from '../../components/sticker';
-import { colors, spacing, fontSize } from '../../constants/theme';
+import { colors, spacing, fontSize, gradients } from '../../constants/theme';
 import { useObserve } from 'expo-observe';
 
 type SortKey = 'moneyShot' | 'pizzaScore' | 'date';
@@ -53,11 +54,9 @@ export default function Activity() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
-      {/* Animated.View, not Animated.Text: an entering animation on
-          Animated.Text leaves the glyphs stuck at opacity 0 here. */}
-      <Animated.View key={`title-${runId}`} entering={FadeInDown.duration(320)}>
+      <FadeUp runId={runId}>
         <Text style={styles.title}>Let&apos;s eat some pizza.</Text>
-      </Animated.View>
+      </FadeUp>
 
       {logs.length > 0 && (
         <StatTrio
@@ -69,11 +68,7 @@ export default function Activity() {
       )}
 
       {logs.length > 0 && (
-        <Animated.View
-          key={`sort-${runId}`}
-          entering={FadeInDown.delay(380).duration(320)}
-          style={styles.sortRow}
-        >
+        <FadeUp runId={runId} delay={380} style={styles.sortRow}>
           {SORT_OPTIONS.map((opt) => (
             <StickerChip
               key={opt.key}
@@ -82,7 +77,7 @@ export default function Activity() {
               onPress={() => pickSort(opt.key)}
             />
           ))}
-        </Animated.View>
+        </FadeUp>
       )}
 
       {logs.length === 0 && !isLoading ? (
@@ -132,6 +127,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+    experimental_backgroundImage: gradients.screen,
     paddingHorizontal: spacing.lg,
   },
   title: {

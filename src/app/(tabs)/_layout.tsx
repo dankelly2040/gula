@@ -12,16 +12,24 @@ export default function TabsLayout() {
           renderingMode="template"
         />
       </NativeTabs.Trigger>
-      {/* Disabled keeps this a native tab item that never switches: the
-          navigator still emits tabPress, which log-tab.tsx uses to open the
-          /log modal (SDK 56+ behavior). */}
-      <NativeTabs.Trigger name="log-tab" disabled>
-        <NativeTabs.Trigger.Label>Log</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="plus.circle.fill" />
-      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="discover">
         <NativeTabs.Trigger.Label>Discover</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'safari', selected: 'safari.fill' }} />
+      </NativeTabs.Trigger>
+      {/* Centre action, deliberately label-less: the glyph carries it.
+          Disabled keeps this a native tab item that never switches; the
+          navigator still emits tabPress, which log-tab.tsx uses to open the
+          /log modal (SDK 56+ behavior). */}
+      <NativeTabs.Trigger name="log-tab" disabled>
+        {/* `hidden` gives an icon-only tab. Omitting the Label entirely does
+            not: the tab falls back to the route name and reads "log-tab".
+            The text still feeds the accessibility label. */}
+        <NativeTabs.Trigger.Label hidden>Log</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="plus.circle.fill" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="leaderboard">
+        <NativeTabs.Trigger.Label>Leaderboard</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'trophy', selected: 'trophy.fill' }} />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
