@@ -1,5 +1,12 @@
 -- Gula leaderboard. Run in the Supabase SQL editor (or `supabase db push`).
 --
+-- Safe to re-run: both functions are `create or replace`. Re-run this file
+-- after editing it, or the database keeps the old definitions.
+--
+-- Ranking is `dense_rank`, not `rank`: on a points tie `rank` skips the next
+-- position, so two players level at the top produce 1, 1, 3 and no second
+-- place. `dense_rank` gives 1, 1, 2.
+--
 -- Both functions are `security definer` on purpose. A leaderboard has to read
 -- across every user's rows, which row-level security deliberately forbids for
 -- the calling user. Exposing them as functions keeps that widening narrow and
@@ -27,7 +34,7 @@ security definer
 set search_path = public
 as $$
   select
-    rank() over (order by p.total_points desc)::integer,
+    dense_rank() over (order by p.total_points desc)::integer,
     p.id,
     p.display_name,
     p.avatar_url,
@@ -71,7 +78,7 @@ as $$
     group by l.user_id
   )
   select
-    rank() over (order by t.points desc)::integer,
+    dense_rank() over (order by t.points desc)::integer,
     t.uid,
     p.display_name,
     p.avatar_url,
