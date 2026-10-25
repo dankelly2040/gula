@@ -69,6 +69,7 @@ function RootLayout() {
             animation: 'slide_from_right',
           }}
         >
+          <Stack.Screen name="index" options={{ animation: 'none' }} />
           <Stack.Protected guard={hasCompletedOnboarding}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen

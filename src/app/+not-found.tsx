@@ -9,7 +9,7 @@ export default function NotFound() {
     <View style={styles.container}>
       <Text style={styles.emoji}>🤷</Text>
       <Text style={styles.title}>Page not found</Text>
-      <Pressable style={styles.button} onPress={() => router.replace('/(tabs)')}>
+      <Pressable style={styles.button} onPress={() => router.replace('/')}>
         <Text style={styles.buttonText}>Go home</Text>
       </Pressable>
     </View>
