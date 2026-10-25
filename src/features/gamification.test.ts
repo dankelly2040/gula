@@ -1,6 +1,7 @@
 /// <reference types="bun" />
 import { describe, expect, mock, test } from 'bun:test';
 import type { PizzaLog } from '../db/types';
+import { SEATTLE_KINGDOMS } from './kingdoms';
 
 // generateId is the only non-pure dependency; stub it so the reward maths can
 // run outside a native runtime.
@@ -27,7 +28,7 @@ function makeLog(timestamp: string, extra: Partial<PizzaLog> = {}): PizzaLog {
     experienceScore: null, sendFriend: null,
     subScores: emptySubScores,
     tags: { style: null, format: null, toppings: [], priceTier: null, context: null },
-    notes: '', pointsEarned: 0, lat: null, lng: null, isPublic: false,
+    notes: '', pointsEarned: 0, lat: null, lng: null, kingdomId: null, isPublic: false,
     updatedAt: timestamp, ...extra,
   };
 }
@@ -146,5 +147,50 @@ describe('computeLogRewards', () => {
     const rewards = computeLogRewards(previous, makeLog(daysAgo(0), { spotName: 'Joes' }), [], 'u');
     const summed = rewards.breakdown.reduce((total, line) => total + line.points, 0);
     expect(summed).toBe(rewards.points);
+  });
+
+  test('awards a first slice and a new spot inside a kingdom', () => {
+    const ballard = SEATTLE_KINGDOMS.find((kingdom) => kingdom.slug === 'ballard')!;
+    const rewards = computeLogRewards(
+      previous,
+      makeLog(daysAgo(0), { kingdomId: ballard.id, spotName: 'Delancey' }),
+      [],
+      'u'
+    );
+    expect(rewards.points).toBe(35);
+    expect(rewards.breakdown.map((line) => line.label)).toEqual([
+      'Pizza logged',
+      'New spot',
+      'First slice in Ballard',
+      'New spot in Ballard',
+    ]);
+    const summed = rewards.breakdown.reduce((total, line) => total + line.points, 0);
+    expect(summed).toBe(rewards.points);
+  });
+
+  test('does not repeat kingdom bonuses for a spot already logged there', () => {
+    const ballard = SEATTLE_KINGDOMS.find((kingdom) => kingdom.slug === 'ballard')!;
+    const seen = [makeLog(daysAgo(5), { kingdomId: ballard.id, spotName: 'Delancey' })];
+    const rewards = computeLogRewards(
+      seen,
+      makeLog(daysAgo(0), { kingdomId: ballard.id, spotName: 'Delancey' }),
+      [],
+      'u'
+    );
+    expect(rewards.points).toBe(10);
+  });
+
+  test('pays a new spot in a kingdom the player has already entered', () => {
+    const ballard = SEATTLE_KINGDOMS.find((kingdom) => kingdom.slug === 'ballard')!;
+    const seen = [makeLog(daysAgo(5), { kingdomId: ballard.id, spotName: 'Delancey' })];
+    const rewards = computeLogRewards(
+      seen,
+      makeLog(daysAgo(0), { kingdomId: ballard.id, spotName: 'Tutta Bella' }),
+      [],
+      'u'
+    );
+    expect(rewards.points).toBe(20);
+    expect(rewards.breakdown.map((line) => line.label)).toContain('New spot in Ballard');
+    expect(rewards.breakdown.some((line) => line.label.startsWith('First slice in'))).toBe(false);
   });
 });

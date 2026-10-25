@@ -1,4 +1,5 @@
 import type { Achievement, AchievementType, PizzaLog } from '../db/types';
+import { kingdomById, type Kingdom } from './kingdoms';
 import { generateId } from '../lib/id';
 
 export const BASE_LOG_POINTS = 10;
@@ -11,6 +12,9 @@ export const NEW_SPOT_BONUS = 5;
 export const NEW_STYLE_BONUS = 5;
 export const COMPLETE_RATING_BONUS = 5;
 export const STREAK_BONUS = 5;
+// Territory bonuses. Larger than a new spot, smaller than the global first slice.
+export const FIRST_IN_KINGDOM_BONUS = 15;
+export const NEW_SPOT_IN_KINGDOM_BONUS = 5;
 
 /** One itemized line on the reward screen, so points never feel arbitrary. */
 export type PointsLine = { label: string; points: number };
@@ -29,12 +33,15 @@ export type LogRewards = {
  * Beyond the base award, points favour consistency (keeping a day streak
  * alive) and variety (new spots, new styles, a fully filled-in rating) over
  * raw volume, so the leaderboard rewards habit rather than bulk logging.
+ * A log placed in a kingdom also earns territory bonuses, and the whole
+ * total — base plus bonuses — is what that kingdom is credited.
  */
 export function computeLogRewards(
   existingLogs: PizzaLog[],
   newLog: PizzaLog,
   existingAchievements: Achievement[],
-  userId: string
+  userId: string,
+  kingdomCatalog?: readonly Kingdom[]
 ): LogRewards {
   const count = existingLogs.length + 1;
   const isFirstLog = count === 1;
@@ -57,6 +64,19 @@ export function computeLogRewards(
   // second pizza on the same day never double-counts.
   if (opensNewActiveDay(existingLogs, newLog) && computeDayStreak([...existingLogs, newLog]) >= 2) {
     breakdown.push({ label: 'Streak kept alive', points: STREAK_BONUS });
+  }
+  if (newLog.kingdomId) {
+    const kingdomName = kingdomById(newLog.kingdomId, kingdomCatalog)?.name ?? 'this kingdom';
+    const priorInKingdom = existingLogs.filter((log) => log.kingdomId === newLog.kingdomId);
+    if (priorInKingdom.length === 0) {
+      breakdown.push({ label: `First slice in ${kingdomName}`, points: FIRST_IN_KINGDOM_BONUS });
+    }
+    // Distinct from the global new-spot line: that one is variety anywhere,
+    // this one is the spot's first appearance inside the kingdom being claimed.
+    const key = spotKey(newLog);
+    if (key !== null && !priorInKingdom.some((log) => spotKey(log) === key)) {
+      breakdown.push({ label: `New spot in ${kingdomName}`, points: NEW_SPOT_IN_KINGDOM_BONUS });
+    }
   }
 
   const points = breakdown.reduce((sum, line) => sum + line.points, 0);

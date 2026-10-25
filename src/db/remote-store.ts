@@ -1,3 +1,11 @@
+import {
+  KINGDOM_NEAR_RADIUS_KM,
+  KINGDOM_WINDOW_DAYS,
+  type CrownStatus,
+  type Kingdom,
+  type KingdomNear,
+  type KingdomScore,
+} from '../features/kingdoms';
 import { supabase } from '../lib/supabase';
 import type { Achievement, AchievementType, PizzaLog, Spot, UserProfile } from './types';
 
@@ -20,6 +28,7 @@ type LogRow = {
   points_earned: number;
   lat: number | null;
   lng: number | null;
+  kingdom_id: string | null;
   is_public: boolean;
   updated_at: string;
 };
@@ -43,6 +52,7 @@ function rowToLog(row: LogRow): PizzaLog {
     pointsEarned: row.points_earned,
     lat: row.lat,
     lng: row.lng,
+    kingdomId: row.kingdom_id ?? null,
     isPublic: row.is_public,
     updatedAt: row.updated_at,
   };
@@ -66,6 +76,7 @@ function logToRow(log: PizzaLog): Omit<LogRow, 'photo_url'> & { photo_url: strin
     points_earned: log.pointsEarned,
     lat: log.lat,
     lng: log.lng,
+    kingdom_id: log.kingdomId,
     is_public: log.isPublic,
     updated_at: log.updatedAt,
   };
@@ -81,9 +92,14 @@ export async function fetchRemoteLogs(userId: string): Promise<PizzaLog[]> {
   return (data as LogRow[]).map(rowToLog);
 }
 
-export async function upsertRemoteLog(log: PizzaLog): Promise<void> {
-  const { error } = await supabase.from('pizza_logs').upsert(logToRow(log));
+/**
+ * Returns the stored row. The BEFORE trigger may replace `kingdom_id` and
+ * fill coordinates from the spot, and the local copy needs to keep that.
+ */
+export async function upsertRemoteLog(log: PizzaLog): Promise<PizzaLog> {
+  const { data, error } = await supabase.from('pizza_logs').upsert(logToRow(log)).select('*').single();
   if (error) throw new Error(error.message);
+  return rowToLog(data as LogRow);
 }
 
 export async function deleteRemoteLog(id: string): Promise<void> {
@@ -300,5 +316,177 @@ export async function fetchRemoteAchievements(userId: string): Promise<Achieveme
     userId: r.user_id,
     type: r.type as AchievementType,
     earnedAt: r.earned_at,
+  }));
+}
+
+// ── kingdoms ────────────────────────────────────────────────────────────────
+// RPCs are security definer (see 0003_kingdoms.sql). The catalog itself is a
+// plain select so it can be cached for offline assignment.
+
+type KingdomBoundsRow = {
+  min_lat: number;
+  max_lat: number;
+  min_lng: number;
+  max_lng: number;
+};
+
+type KingdomCatalogRow = {
+  id: string;
+  slug: string;
+  name: string;
+  city: string | null;
+  kingdom_bounds: KingdomBoundsRow[] | null;
+};
+
+export async function fetchKingdomCatalog(): Promise<Kingdom[]> {
+  const { data, error } = await supabase
+    .from('kingdoms')
+    .select('id, slug, name, city, kingdom_bounds(min_lat, max_lat, min_lng, max_lng)')
+    .order('slug');
+  if (error) throw new Error(error.message);
+  return (data as KingdomCatalogRow[]).flatMap((row) => {
+    const bounds = (row.kingdom_bounds ?? []).map((box) => ({
+      minLat: box.min_lat,
+      maxLat: box.max_lat,
+      minLng: box.min_lng,
+      maxLng: box.max_lng,
+    }));
+    if (bounds.length === 0) return [];
+    return [{ id: row.id, slug: row.slug, name: row.name, city: row.city, bounds }];
+  });
+}
+
+type KingdomNearRow = {
+  id: string;
+  slug: string;
+  name: string;
+  city: string | null;
+  center_lat: number;
+  center_lng: number;
+  distance_km: number;
+  contains_point: boolean;
+};
+
+export async function fetchKingdomsNear(
+  lat: number,
+  lng: number,
+  radiusKm = KINGDOM_NEAR_RADIUS_KM
+): Promise<KingdomNear[]> {
+  const { data, error } = await supabase.rpc('kingdoms_near', {
+    p_lat: lat,
+    p_lng: lng,
+    radius_km: radiusKm,
+  });
+  if (error) throw new Error(error.message);
+  return (data as KingdomNearRow[]).map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    city: row.city,
+    centerLat: row.center_lat,
+    centerLng: row.center_lng,
+    distanceKm: Number(row.distance_km),
+    containsPoint: row.contains_point,
+  }));
+}
+
+export async function fetchKingdomLeaderboard(
+  kingdomId: string,
+  windowDays = KINGDOM_WINDOW_DAYS,
+  limit = 50
+): Promise<LeaderboardEntry[]> {
+  const { data, error } = await supabase.rpc('kingdom_leaderboard', {
+    target_kingdom: kingdomId,
+    window_days: windowDays,
+    limit_count: limit,
+  });
+  if (error) throw new Error(error.message);
+  return (data as LeaderboardRow[]).map(rowToEntry);
+}
+
+type KingdomCrownRow = {
+  kingdom_id: string;
+  status: string;
+  user_id: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  points: number;
+  logs: number | null;
+  holder_count: number;
+};
+
+export type KingdomCrown = {
+  kingdomId: string;
+  status: CrownStatus;
+  userId: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  points: number;
+  logs: number | null;
+  holderCount: number;
+};
+
+function crownStatus(value: string): CrownStatus {
+  if (value === 'held' || value === 'contested' || value === 'vacant') return value;
+  return 'vacant';
+}
+
+export async function fetchKingdomCrown(
+  kingdomId: string,
+  windowDays = KINGDOM_WINDOW_DAYS
+): Promise<KingdomCrown> {
+  const { data, error } = await supabase.rpc('kingdom_crown', {
+    target_kingdom: kingdomId,
+    window_days: windowDays,
+  });
+  if (error) throw new Error(error.message);
+  const row = (data as KingdomCrownRow[] | null)?.[0];
+  if (!row) {
+    return {
+      kingdomId,
+      status: 'vacant',
+      userId: null,
+      displayName: null,
+      avatarUrl: null,
+      points: 0,
+      logs: null,
+      holderCount: 0,
+    };
+  }
+  const status = crownStatus(row.status);
+  return {
+    kingdomId: row.kingdom_id,
+    status,
+    userId: status === 'held' ? row.user_id : null,
+    displayName: status === 'held' ? row.display_name : null,
+    avatarUrl: status === 'held' ? row.avatar_url : null,
+    points: Number(row.points) || 0,
+    logs: status === 'held' && row.logs != null ? Number(row.logs) : null,
+    holderCount: Number(row.holder_count) || 0,
+  };
+}
+
+type MyKingdomScoreRow = {
+  kingdom_id: string;
+  kingdom_name: string;
+  city: string | null;
+  points: number;
+  logs: number;
+  all_time_points: number;
+  all_time_logs: number;
+};
+
+/** Server aggregate for the signed-in user, including logs saved on another device. */
+export async function fetchMyKingdomScores(windowDays = KINGDOM_WINDOW_DAYS): Promise<KingdomScore[]> {
+  const { data, error } = await supabase.rpc('my_kingdom_scores', { window_days: windowDays });
+  if (error) throw new Error(error.message);
+  return (data as MyKingdomScoreRow[]).map((row) => ({
+    kingdomId: row.kingdom_id,
+    kingdomName: row.kingdom_name,
+    city: row.city,
+    points: Number(row.points) || 0,
+    logs: Number(row.logs) || 0,
+    allTimePoints: Number(row.all_time_points) || 0,
+    allTimeLogs: Number(row.all_time_logs) || 0,
   }));
 }
