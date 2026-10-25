@@ -42,3 +42,14 @@ app-example
 # generated native folders
 /ios
 /android
+
+# EAS Simulator session credentials (managed by eas-cli, never commit)
+.env.eas-simulator
+
+# Local simulator captures and Argent recordings
+simulator-captures/
+*.gesture-telemetry.json
+
+# Machine-local Claude Code hooks and Supabase CLI scratch
+.claude/
+supabase/.temp/

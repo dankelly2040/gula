@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     // Must exactly match the native splash background for a seamless handoff.
-    backgroundColor: colors.bg, // #FAF1B2
+    backgroundColor: colors.bg,
     zIndex: 9999,
     elevation: 9999,
   },

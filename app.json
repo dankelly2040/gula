@@ -15,8 +15,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "https://agent.expo.dev/static/icon.png",
-        "backgroundColor": "#1a1a2e"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#F7F1E3"
       },
       "package": "com.dannymanning.gula",
       "permissions": [
@@ -74,7 +74,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FAF1B2"
+          "backgroundColor": "#F7F1E3"
         }
       ],
       "expo-notifications",

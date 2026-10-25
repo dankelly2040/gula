@@ -1,93 +1,106 @@
-// 2L "Wood-fired, daylight" palette (design round, July 2026).
-// Rules: brand ember is the ONLY interactive color; gold is reserved for
-// points and Nirvana; danger is reserved for destructive actions.
+// Pizza Quest "faded pizzeria menu" palette (October 2026).
+// Pale parchment ground, warm charcoal ink, faded tomato as the ONLY
+// interactive color. Gold is reserved for points; danger for destructive
+// actions. Kingdom fills are the four map tints and nothing else.
 export const colors = {
   // Brand (the one color that means "tap me")
-  brand: '#D9530E',
-  brandDark: '#B84508',
-  brandLight: '#F26E2E',
+  brand: '#D96C5A',
+  brandDark: '#B95443',
+  brandLight: '#E8897A',
 
-  // Backgrounds (pale butter yellow)
-  bg: '#FAF1B2',
-  bgCard: '#FFFEF4',
-  bgElevated: '#F1E599',
-  bgInput: '#F5EBA4',
+  // Backgrounds (parchment)
+  bg: '#F7F1E3',
+  bgCard: '#FFFBF2',
+  bgElevated: '#EFE6D2',
+  bgInput: '#F3ECDB',
 
-  // Text (espresso)
-  textPrimary: '#2C1E12',
-  textSecondary: '#6B5744',
-  textMuted: '#9A8670',
+  // Text (warm charcoal)
+  textPrimary: '#4A3F35',
+  textSecondary: '#8A7B6B',
+  textMuted: '#AFA290',
 
   // Reserved accents
-  gold: '#A06E08', // points and Nirvana only; deepened to hold contrast on the yellow ground
+  gold: '#B8923E', // points only
 
-  // Score zones (Vom to Nirvana): one monotonic ramp, red to orange to
-  // yellow to green, so the slider reads as a single gradual scale.
-  zoneVom: '#B02315',
-  zoneRegret: '#CC5A1D',
-  zoneFine: '#DD8A1A',
-  zoneCrave: '#D9B516',
-  zoneBliss: '#93B23A',
-  zoneNirvana: '#4E9142',
+  // Score zones (Vom to Nirvana): one monotonic ramp, faded so it sits on
+  // parchment without shouting.
+  zoneVom: '#C0564A',
+  zoneRegret: '#D4826A',
+  zoneFine: '#DDA86B',
+  zoneCrave: '#D9BE6E',
+  zoneBliss: '#A9BA7E',
+  zoneNirvana: '#7FA56F',
+
+  // Kingdom tints (map fills, legend swatches)
+  kingdomSage: '#C9D6B8',
+  kingdomPowder: '#C3D4E0',
+  kingdomBlush: '#EFCFC4',
+  kingdomMustard: '#EAD48C',
 
   // Utility
-  border: '#E2D488',
-  overlay: 'rgba(44, 30, 18, 0.45)',
-  danger: '#C0392B',
-  success: '#4E7A3A',
+  border: '#E3D8C3',
+  overlay: 'rgba(74, 63, 53, 0.4)',
+  danger: '#C25B4D',
+  success: '#7FA56F',
 
-  // Sticker language
-  ink: '#2C1E12', // outlines
-  frame: '#EBC257', // mustard card frames
-  surface: '#FFFEF7', // sticker button/card fill
+  // Sticker language, softened: thin ink lines, low shadows
+  ink: '#4A3F35', // outlines
+  frame: '#E6CF96', // pale mustard card frames
+  surface: '#FFFBF2', // button/card fill
 } as const;
 
-// Neobrutalist sticker treatment: ink outlines + hard offset shadows.
-// Applies to custom RN surfaces only; native surfaces (@expo/ui forms,
-// pickers, sheets, the tab bar) stay native.
+export const KINGDOM_FILLS = [
+  colors.kingdomSage,
+  colors.kingdomPowder,
+  colors.kingdomBlush,
+  colors.kingdomMustard,
+] as const;
+
+// Sticker treatment, now a printed-card feel: 1px ink line, 1px to 3px
+// offset shadows at low opacity. Applies to custom RN surfaces only; native
+// surfaces (@expo/ui forms, pickers, sheets, the tab bar) stay native.
 export const sticker = {
   border: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.ink,
   },
   shadow: {
     shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 0,
-    elevation: 6,
-  },
-  shadowSm: {
-    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.22,
+    shadowOpacity: 0.14,
     shadowRadius: 0,
     elevation: 3,
   },
+  shadowSm: {
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 0,
+    elevation: 2,
+  },
   shadowLg: {
     shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 7 },
-    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
     shadowRadius: 0,
-    elevation: 8,
+    elevation: 4,
   },
   pressed: {
-    transform: [{ translateY: 3 }],
+    transform: [{ translateY: 1 }],
     shadowOffset: { width: 0, height: 1 },
   },
 } as const;
 
-// Screen wash. The flat #FAF1B2 ground read as a single sheet of card; this
-// lifts it into daylight: paler butter at the top, deeper at the bottom, with
-// a soft mustard bloom in the upper right. Mustard rather than ember, because
-// ember is reserved for things you can tap.
+// Screen wash: paler parchment at the top, a touch deeper at the bottom,
+// with a faint mustard bloom in the upper right so the ground is not one
+// flat sheet.
 //
 // CSS gradients need the New Architecture. Gula is Fabric-only, so this is
 // safe; do not swap in expo-linear-gradient.
 export const gradients = {
   screen: [
-    'radial-gradient(ellipse 110% 70% at 85% 0%, rgba(235, 194, 87, 0.45) 0%, rgba(235, 194, 87, 0) 62%)',
-    'linear-gradient(to bottom, #FDF8D6 0%, #FAF1B2 42%, #F2E29A 100%)',
+    'radial-gradient(ellipse 110% 70% at 85% 0%, rgba(230, 207, 150, 0.35) 0%, rgba(230, 207, 150, 0) 62%)',
+    'linear-gradient(to bottom, #FBF7EC 0%, #F7F1E3 42%, #F0E7D2 100%)',
   ].join(', '),
 } as const;
 

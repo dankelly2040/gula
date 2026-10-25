@@ -18,9 +18,9 @@ export default function TabsLayout() {
             renderingMode="template"
           />
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="discover">
-          <NativeTabs.Trigger.Label>Discover</NativeTabs.Trigger.Label>
-          <NativeTabs.Trigger.Icon sf={{ default: 'safari', selected: 'safari.fill' }} />
+        <NativeTabs.Trigger name="realm">
+          <NativeTabs.Trigger.Label>Realm</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon sf={{ default: 'map', selected: 'map.fill' }} />
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="leaderboard">
           <NativeTabs.Trigger.Label>Leaderboard</NativeTabs.Trigger.Label>
