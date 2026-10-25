@@ -62,6 +62,12 @@ export function SpotPicker() {
 
   const selectSpot = (spot: Spot) => {
     setSpot(spot.id, spot.name);
+    // A spot pin places the log when the device has no GPS fix, which is
+    // enough for kingdom assignment. An existing device fix is kept.
+    const draft = useDraftLogStore.getState();
+    if (draft.lat == null && draft.lng == null && spot.lat != null && spot.lng != null) {
+      draft.setCoords(spot.lat, spot.lng);
+    }
     resetQuery();
     setSheetOpen(false);
   };

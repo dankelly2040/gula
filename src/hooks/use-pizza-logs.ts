@@ -6,13 +6,16 @@ import {
   deleteLog,
   getProfile,
   saveProfile,
+  getSpots,
   getAchievements,
   saveAchievements,
   enqueueSyncOp,
+  loadKingdomCatalog,
 } from '../db/local-store';
 import { syncWithCloud } from '../db/sync';
 import type { PizzaLog, UserProfile } from '../db/types';
 import { computeLogRewards, computeWeeklyStreak, type LogRewards } from '../features/gamification';
+import { assignLogKingdom } from '../features/kingdoms';
 import { useSessionStore } from '../state/session';
 
 export function usePizzaLogs() {
@@ -52,12 +55,17 @@ export function useSaveLog() {
       const session = useSessionStore.getState();
       const userId = session.userId ?? log.userId;
 
-      const [existingLogs, existingAchievements] = await Promise.all([
+      const [existingLogs, existingAchievements, spots, catalog] = await Promise.all([
         getLogs(),
         getAchievements(),
+        getSpots(),
+        loadKingdomCatalog(),
       ]);
-      const rewards = computeLogRewards(existingLogs, log, existingAchievements, userId);
-      const finalLog: PizzaLog = { ...log, userId, pointsEarned: rewards.points };
+      // Place the log before scoring so the kingdom bonuses see the kingdom
+      // they are about to credit. Sync later confirms the id with the server.
+      const placed = assignLogKingdom({ ...log, userId }, spots, catalog);
+      const rewards = computeLogRewards(existingLogs, placed, existingAchievements, userId, catalog);
+      const finalLog: PizzaLog = { ...placed, pointsEarned: rewards.points };
 
       await saveLog(finalLog);
       await enqueueSyncOp({ kind: 'upsert-log', id: finalLog.id });
@@ -89,6 +97,7 @@ export function useSaveLog() {
       qc.invalidateQueries({ queryKey: ['pizza-logs'] });
       qc.invalidateQueries({ queryKey: ['profile'] });
       qc.invalidateQueries({ queryKey: ['achievements'] });
+      invalidateKingdomQueries(qc);
     },
   });
 }
@@ -97,12 +106,18 @@ export function useUpdateLog() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (log: PizzaLog) => {
-      const updated = { ...log, updatedAt: new Date().toISOString() };
+      const [spots, catalog] = await Promise.all([getSpots(), loadKingdomCatalog()]);
+      // Points stay as awarded at create time. Moving a log reassigns which
+      // kingdom receives that existing total; it does not pay the bonus again.
+      const updated = assignLogKingdom({ ...log, updatedAt: new Date().toISOString() }, spots, catalog);
       await updateLog(updated);
       await enqueueSyncOp({ kind: 'upsert-log', id: updated.id });
       void syncWithCloud();
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['pizza-logs'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pizza-logs'] });
+      invalidateKingdomQueries(qc);
+    },
   });
 }
 
@@ -114,8 +129,18 @@ export function useDeleteLog() {
       await enqueueSyncOp({ kind: 'delete-log', id });
       void syncWithCloud();
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['pizza-logs'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pizza-logs'] });
+      invalidateKingdomQueries(qc);
+    },
   });
+}
+
+function invalidateKingdomQueries(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ['kingdoms-near'] });
+  qc.invalidateQueries({ queryKey: ['kingdom-leaderboard'] });
+  qc.invalidateQueries({ queryKey: ['kingdom-crown'] });
+  qc.invalidateQueries({ queryKey: ['my-kingdom-scores'] });
 }
 
 function emptyProfile(userId: string): UserProfile {

@@ -1,3 +1,4 @@
+import { assignLogKingdom } from '../features/kingdoms';
 import {
   getLogs,
   replaceLogs,
@@ -8,6 +9,8 @@ import {
   saveAchievements,
   getSyncQueue,
   replaceSyncQueue,
+  loadKingdomCatalog,
+  saveKingdomCatalog,
   type SyncOp,
 } from './local-store';
 import {
@@ -19,6 +22,7 @@ import {
   upsertRemoteSpot,
   fetchRemoteAchievements,
   upsertRemoteAchievement,
+  fetchKingdomCatalog,
 } from './remote-store';
 import { uploadPhoto, PhotoUnreadableError } from '../lib/images';
 import { useSessionStore } from '../state/session';
@@ -33,10 +37,21 @@ export async function syncWithCloud(): Promise<void> {
   if (!isAuthenticated || !userId) return;
 
   try {
+    // Catalog first, so the flush below assigns with the server's boxes.
+    await refreshKingdomCatalog();
     await flushQueue(userId);
     await pullMerge(userId);
   } catch {
     // Offline or backend not provisioned yet — queue is preserved for later.
+  }
+}
+
+async function refreshKingdomCatalog(): Promise<void> {
+  try {
+    const catalog = await fetchKingdomCatalog();
+    if (catalog.length > 0) await saveKingdomCatalog(catalog);
+  } catch {
+    // Offline, or migration 0003 is not applied yet. The bundled seed still assigns.
   }
 }
 
@@ -73,10 +88,14 @@ async function applyOp(op: SyncOp, userId: string): Promise<void> {
           photoUri = null;
         }
       }
-      const synced = { ...log, userId, photoUri, photoUrl };
-      await upsertRemoteLog(synced);
+      const catalog = await loadKingdomCatalog();
+      const spots = await getSpots();
+      const assigned = assignLogKingdom({ ...log, userId, photoUri, photoUrl }, spots, catalog);
+      // The returned row carries the trigger's kingdom_id, which wins over
+      // whatever the phone guessed from a stale catalog.
+      const saved = await upsertRemoteLog(assigned);
       const logs = await getLogs();
-      await replaceLogs(logs.map((l) => (l.id === op.id ? synced : l)));
+      await replaceLogs(logs.map((l) => (l.id === op.id ? { ...saved, photoUri } : l)));
       return;
     }
     case 'delete-log':

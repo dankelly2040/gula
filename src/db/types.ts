@@ -36,6 +36,8 @@ export type PizzaLog = {
   pointsEarned: number;
   lat: number | null;
   lng: number | null;
+  /** Set when the log's coordinates fall inside a kingdom. Null in the gaps. */
+  kingdomId: string | null;
   isPublic: boolean;
   updatedAt: string;
 };

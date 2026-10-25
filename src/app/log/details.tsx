@@ -157,6 +157,7 @@ export default function Details() {
       pointsEarned: 0, // computed by useSaveLog
       lat: draft.lat,
       lng: draft.lng,
+      kingdomId: null, // assigned by useSaveLog from coordinates or the spot
       isPublic: profile?.shareWithCommunity ?? false,
       updatedAt: new Date().toISOString(),
     };

@@ -1,4 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  activeKingdomCatalog,
+  assignLogKingdom,
+  parseKingdomCatalog,
+  type Kingdom,
+} from '../features/kingdoms';
 import type { Achievement, PizzaLog, Spot, UserProfile } from './types';
 
 const LOGS_KEY = '@gula/pizza-logs';
@@ -6,6 +12,7 @@ const PROFILE_KEY = '@gula/profile';
 const SPOTS_KEY = '@gula/spots';
 const ACHIEVEMENTS_KEY = '@gula/achievements';
 const SYNC_QUEUE_KEY = '@gula/sync-queue';
+const KINGDOMS_KEY = '@gula/kingdoms';
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
   const raw = await AsyncStorage.getItem(key);
@@ -14,16 +21,27 @@ async function readJson<T>(key: string, fallback: T): Promise<T> {
 }
 
 export async function getLogs(): Promise<PizzaLog[]> {
-  const logs = await readJson<PizzaLog[]>(LOGS_KEY, []);
-  // Backfill fields added after v1 records were written.
-  return logs.map((l) => ({
-    ...l,
-    photoUrl: l.photoUrl ?? null,
-    lat: l.lat ?? null,
-    lng: l.lng ?? null,
-    isPublic: l.isPublic ?? false,
-    updatedAt: l.updatedAt ?? l.timestamp,
-  }));
+  const [logs, spots, catalog] = await Promise.all([
+    readJson<PizzaLog[]>(LOGS_KEY, []),
+    getSpots(),
+    loadKingdomCatalog(),
+  ]);
+  // Backfill fields added after v1 records were written. A missing kingdom is
+  // filled in memory from the device fix, or from the spot when that fix was
+  // never captured, so scores work before the next explicit save. A stored
+  // kingdom id is left alone.
+  return logs.map((l) => {
+    const log: PizzaLog = {
+      ...l,
+      photoUrl: l.photoUrl ?? null,
+      lat: l.lat ?? null,
+      lng: l.lng ?? null,
+      kingdomId: l.kingdomId ?? null,
+      isPublic: l.isPublic ?? false,
+      updatedAt: l.updatedAt ?? l.timestamp,
+    };
+    return log.kingdomId ? log : assignLogKingdom(log, spots, catalog);
+  });
 }
 
 export async function saveLog(log: PizzaLog): Promise<void> {
@@ -104,4 +122,28 @@ export async function enqueueSyncOp(op: SyncOp): Promise<void> {
 
 export async function replaceSyncQueue(queue: SyncOp[]): Promise<void> {
   await AsyncStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+}
+
+// ── kingdom catalog ─────────────────────────────────────────────────────────
+// The bundled Seattle seed is the offline default. A successful sync stores
+// the server catalog, which loadKingdomCatalog overlays on that seed.
+
+export async function getKingdomCatalog(): Promise<Kingdom[]> {
+  try {
+    const raw = await AsyncStorage.getItem(KINGDOMS_KEY);
+    if (!raw) return [];
+    return parseKingdomCatalog(JSON.parse(raw));
+  } catch {
+    return [];
+  }
+}
+
+export async function saveKingdomCatalog(kingdoms: readonly Kingdom[]): Promise<void> {
+  const parsed = parseKingdomCatalog(kingdoms);
+  if (parsed.length === 0) return;
+  await AsyncStorage.setItem(KINGDOMS_KEY, JSON.stringify(parsed));
+}
+
+export async function loadKingdomCatalog(): Promise<readonly Kingdom[]> {
+  return activeKingdomCatalog(await getKingdomCatalog());
 }
