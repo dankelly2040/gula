@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Pressable,
   ScrollView,
   ActivityIndicator,
   RefreshControl,
@@ -18,8 +17,9 @@ import { useSessionStore } from '../../state/session';
 import { PillButton } from '../../components/sticker';
 import { CountUp } from '../../components/stat-row';
 import { FadeUp } from '../../components/fade-up';
+import { TextTabs } from '../../components/text-tabs';
 import type { LeaderboardEntry } from '../../db/remote-store';
-import { colors, spacing, fontSize, radii, sticker, gradients } from '../../constants/theme';
+import { colors, fonts, spacing, fontSize } from '../../constants/theme';
 import { LOG_BUTTON_CLEARANCE } from '../../components/log-button';
 
 const PERIODS: { key: LeaderboardPeriod; label: string }[] = [
@@ -109,6 +109,7 @@ export default function Leaderboard() {
               entry={entry}
               isMe={entry.userId === userId}
               index={i}
+              first={i === 0}
               runId={runId}
             />
           </FadeUp>
@@ -116,13 +117,11 @@ export default function Leaderboard() {
 
         {/* Everyone should be able to find themselves without scrolling. */}
         {!me && (
-          <View style={styles.notRanked}>
-            <Text style={styles.notRankedText}>
-              {period === 'month'
-                ? 'You have not logged a pizza this month yet.'
-                : 'Log your first pizza to join the board.'}
-            </Text>
-          </View>
+          <Text style={styles.notRankedText}>
+            {period === 'month'
+              ? 'You have not logged a pizza this month yet.'
+              : 'Log your first pizza to join the board.'}
+          </Text>
         )}
       </ScrollView>
     );
@@ -131,21 +130,9 @@ export default function Leaderboard() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
       {/* A tab root has nowhere to go back to, so the title stands alone. */}
-      <Text style={styles.title}>Leaderboard</Text>
+      <Text style={styles.title}>Leaderboard.</Text>
 
-      <View style={styles.segmentRow}>
-        {PERIODS.map((p) => (
-          <Pressable
-            key={p.key}
-            style={[styles.segment, period === p.key && styles.segmentActive]}
-            onPress={() => setPeriod(p.key)}
-          >
-            <Text style={[styles.segmentText, period === p.key && styles.segmentTextActive]}>
-              {p.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <TextTabs options={PERIODS} value={period} onChange={setPeriod} style={styles.tabs} />
 
       {renderBody()}
     </View>
@@ -156,16 +143,18 @@ function Row({
   entry,
   isMe,
   index,
+  first,
   runId,
 }: {
   entry: LeaderboardEntry;
   isMe: boolean;
   index: number;
+  first: boolean;
   runId: number;
 }) {
   const medal = entry.rank <= 3;
   return (
-    <View style={[styles.row, isMe && styles.rowMe]}>
+    <View style={[styles.row, !first && styles.rowDivider]}>
       <View style={[styles.rankBadge, medal && styles.rankBadgeMedal]}>
         <Text style={[styles.rankText, medal && styles.rankTextMedal]}>{entry.rank}</Text>
       </View>
@@ -179,7 +168,7 @@ function Row({
       </View>
 
       <View style={styles.rowInfo}>
-        <Text style={styles.rowName} numberOfLines={1}>
+        <Text style={[styles.rowName, isMe && styles.rowNameMe]} numberOfLines={1}>
           {entry.displayName?.trim() || 'Pizza enthusiast'}
           {isMe ? ' (you)' : ''}
         </Text>
@@ -202,40 +191,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-    experimental_backgroundImage: gradients.screen,
     paddingHorizontal: spacing.lg,
   },
   title: {
-    fontSize: fontSize.xl,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginBottom: spacing.lg,
-  },
-  segmentRow: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: radii.full,
-    padding: 3,
+    fontFamily: fonts.display,
+    fontSize: 21,
+    lineHeight: 28,
+    textTransform: 'uppercase',
+    color: colors.brand,
     marginBottom: spacing.md,
-    ...sticker.border,
-    ...sticker.shadowSm,
   },
-  segment: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: radii.full,
-  },
-  segmentActive: {
-    backgroundColor: colors.brand,
-  },
-  segmentText: {
-    fontSize: fontSize.sm,
-    fontWeight: '700',
-    color: colors.textMuted,
-  },
-  segmentTextActive: {
-    color: colors.surface,
+  tabs: {
+    marginBottom: spacing.sm,
   },
   centered: {
     flex: 1,
@@ -267,22 +234,17 @@ const styles = StyleSheet.create({
   },
   listContent: {
   },
+  // A row is a line of the board, not a box: rank, face, name, points,
+  // with a hairline between one row and the next.
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.sm,
-    gap: spacing.sm,
-    ...sticker.border,
-    ...sticker.shadowSm,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
   },
-  // The signed-in user's row is the one thing worth picking out of the list.
-  rowMe: {
-    borderColor: colors.brand,
-    borderWidth: 2.5,
+  rowDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
   rankBadge: {
     width: 30,
@@ -290,8 +252,8 @@ const styles = StyleSheet.create({
   },
   rankBadgeMedal: {},
   rankText: {
+    fontFamily: fonts.display,
     fontSize: fontSize.md,
-    fontWeight: '800',
     color: colors.textMuted,
   },
   rankTextMedal: {
@@ -320,25 +282,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
   },
+  // The signed-in user's row is the one thing worth picking out of the list.
+  rowNameMe: {
+    color: colors.brand,
+  },
   rowMeta: {
     fontSize: fontSize.sm,
     color: colors.textMuted,
   },
   rowPoints: {
+    fontFamily: fonts.display,
     fontSize: fontSize.lg,
-    fontWeight: '800',
     color: colors.gold,
-  },
-  notRanked: {
-    backgroundColor: colors.bgElevated,
-    borderRadius: radii.md,
-    padding: spacing.md,
-    marginTop: spacing.sm,
   },
   notRankedText: {
     fontSize: fontSize.sm,
     color: colors.textSecondary,
     textAlign: 'center',
     fontWeight: '600',
+    paddingTop: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
 });

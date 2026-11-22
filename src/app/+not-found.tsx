@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors, spacing, fontSize, radii, gradients } from '../constants/theme';
+import { colors, spacing, fontSize, radii } from '../constants/theme';
 
 export default function NotFound() {
   const router = useRouter();
@@ -9,7 +9,7 @@ export default function NotFound() {
     <View style={styles.container}>
       <Text style={styles.emoji}>🤷</Text>
       <Text style={styles.title}>Page not found</Text>
-      <Pressable style={styles.button} onPress={() => router.replace('/')}>
+      <Pressable accessibilityRole="button" style={styles.button} onPress={() => router.replace('/')}>
         <Text style={styles.buttonText}>Go home</Text>
       </Pressable>
     </View>
@@ -20,7 +20,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-    experimental_backgroundImage: gradients.screen,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,

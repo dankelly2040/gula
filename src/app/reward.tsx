@@ -13,9 +13,10 @@ import * as Haptics from 'expo-haptics';
 import { SymbolView } from 'expo-symbols';
 import { useEffect } from 'react';
 import { ACHIEVEMENT_DEFS, type AchievementType } from '../db/types';
-import { enableStreakReminders } from '../lib/notifications';
 import { useSessionStore } from '../state/session';
+import { FadeUp } from '../components/fade-up';
 import { PizzaConfetti } from '../components/pizza-confetti';
+import { CountUp } from '../components/stat-row';
 import { PillButton } from '../components/sticker';
 import { colors, spacing, fontSize, radii, sticker } from '../constants/theme';
 
@@ -74,20 +75,22 @@ export default function Reward() {
     ],
   }));
 
+  // The card lands after the confetti; the total then counts up and the
+  // itemized lines follow one by one, so the points read as being earned.
+  const cardDelay = reducedMotion ? 0 : 1860;
+
   const dismiss = () => router.replace('/(tabs)');
 
-  const handleSaveProgress = () => {
+  // First log, no account yet: the next step asks for one, now that there
+  // are points worth keeping.
+  const promptForAccount = isFirst && isAnonymous;
+  const handleContinue = () => {
     markAccountPromptSeen();
-    router.replace('/sign-in');
-  };
-
-  const handleRemindWeekly = async () => {
-    await enableStreakReminders();
-    dismiss();
+    router.replace({ pathname: '/sign-in', params: { intent: 'first-log', points: String(points) } });
   };
 
   return (
-    <Pressable style={styles.overlay} onPress={isFirst ? undefined : dismiss}>
+    <Pressable accessible={false} style={styles.overlay} onPress={isFirst ? undefined : dismiss}>
       <Animated.View
         style={[
           styles.card,
@@ -105,15 +108,22 @@ export default function Reward() {
         <Text style={styles.title}>
           {isFirst ? 'Your first pizza is in the books' : 'Pizza logged!'}
         </Text>
-        <Text style={styles.points}>+{points} points</Text>
+        <Text style={styles.points} accessibilityLabel={`Plus ${points} Pizza Points`}>
+          +<CountUp value={points} delay={cardDelay} runId={0} style={styles.points} /> Pizza Points
+        </Text>
 
         {breakdown.length > 1 && (
           <View style={styles.breakdown}>
-            {breakdown.map((line) => (
-              <View key={line.label} style={styles.breakdownRow}>
+            {breakdown.map((line, index) => (
+              <FadeUp
+                key={line.label}
+                runId={0}
+                delay={cardDelay + 240 + index * 140}
+                style={styles.breakdownRow}
+              >
                 <Text style={styles.breakdownLabel}>{line.label}</Text>
                 <Text style={styles.breakdownPoints}>+{line.points}</Text>
-              </View>
+              </FadeUp>
             ))}
           </View>
         )}
@@ -143,21 +153,15 @@ export default function Reward() {
         {isFirst ? (
           <>
             <Text style={styles.message}>
-              First slice in the books. Keep it going and never lose it.
+              First slice in the books. Every pizza from here adds to your total.
             </Text>
             <View style={styles.buttonStack}>
-              {isAnonymous && (
-                <PillButton label="Save your progress" onPress={handleSaveProgress} />
+              {promptForAccount ? (
+                <PillButton label="Continue" onPress={handleContinue} />
+              ) : (
+                <PillButton label="See my pizzas" onPress={dismiss} />
               )}
-              <PillButton
-                variant="quiet"
-                label="Remind me weekly"
-                onPress={() => void handleRemindWeekly()}
-              />
             </View>
-            <Pressable style={styles.dismissButton} onPress={dismiss}>
-              <Text style={styles.dismissButtonText}>Not now</Text>
-            </Pressable>
           </>
         ) : (
           <>
@@ -275,14 +279,5 @@ const styles = StyleSheet.create({
   buttonStack: {
     width: '100%',
     gap: spacing.sm,
-  },
-  dismissButton: {
-    paddingVertical: spacing.md,
-    marginTop: spacing.xs,
-  },
-  dismissButtonText: {
-    color: colors.textMuted,
-    fontSize: fontSize.md,
-    fontWeight: '600',
   },
 });

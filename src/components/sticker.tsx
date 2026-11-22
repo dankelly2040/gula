@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { SymbolView } from 'expo-symbols';
-import { colors, spacing, fontSize, radii, sticker } from '../constants/theme';
+import { colors, fonts, spacing, fontSize, shape, sticker } from '../constants/theme';
 
-// Shared sticker-language primitives: ink outlines, hard offset shadows,
-// press-down physicality. Custom RN surfaces only; native surfaces stay native.
+// Shared button and chip primitives, in the app's flat shape language (see
+// `shape` in constants/theme): solid fills, no outlines, no hard shadows.
+// Custom RN surfaces only; native surfaces stay native.
 
 export function PillButton({
   onPress,
@@ -21,11 +22,21 @@ export function PillButton({
   variant?: 'primary' | 'quiet' | 'danger';
   style?: ViewStyle;
 }) {
-  const fill =
-    variant === 'primary' ? colors.brand : variant === 'danger' ? colors.danger : colors.surface;
-  const textColor = variant === 'quiet' ? colors.ink : colors.surface;
+  // Primary is the one solid red block. Quiet and danger are grey blocks, so
+  // a destructive action is never mistaken for the main one; danger says so
+  // with red lettering.
+  const fill = variant === 'primary' ? colors.brand : colors.bgElevated;
+  const textColor =
+    variant === 'primary' ? colors.surface : variant === 'danger' ? colors.brand : colors.ink;
   return (
-    <Pressable onPress={onPress} disabled={disabled} hitSlop={4}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={4}
+    >
       {({ pressed }) => (
         <View
           style={[
@@ -47,14 +58,17 @@ export function PillButton({
 export function CircleButton({
   onPress,
   children,
+  label,
   size = 56,
 }: {
   onPress: () => void;
   children: ReactNode;
+  /** Icon-only control, so the label is the only name a screen reader gets. */
+  label: string;
   size?: number;
 }) {
   return (
-    <Pressable onPress={onPress} hitSlop={6}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={6}>
       {({ pressed }) => (
         <View
           style={[
@@ -70,7 +84,7 @@ export function CircleButton({
   );
 }
 
-/** Selectable chip: white with ink outline; selected fills ember. */
+/** Selectable chip: a grey block; selected fills red. */
 export function StickerChip({
   label,
   selected,
@@ -81,7 +95,13 @@ export function StickerChip({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} hitSlop={2}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: !!selected }}
+      onPress={onPress}
+      hitSlop={2}
+    >
       {({ pressed }) => (
         <View
           style={[
@@ -98,40 +118,36 @@ export function StickerChip({
 }
 
 const styles = StyleSheet.create({
+  // Named "pill" for history; it is a rounded rectangle now.
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    borderRadius: radii.full,
+    borderRadius: shape.button,
+    minHeight: 54,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    ...sticker.border,
-    ...sticker.shadow,
   },
   pillText: {
-    fontSize: fontSize.md,
-    fontWeight: '800',
-    letterSpacing: 1.5,
+    fontFamily: fonts.label,
+    fontSize: 15,
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
   disabled: {
     opacity: 0.6,
   },
   circle: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
-    ...sticker.border,
-    ...sticker.shadow,
   },
   chip: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.full,
-    paddingVertical: spacing.xs + 2,
+    backgroundColor: colors.bgElevated,
+    borderRadius: shape.chip,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    ...sticker.border,
-    ...sticker.shadowSm,
   },
   chipSelected: {
     backgroundColor: colors.brand,

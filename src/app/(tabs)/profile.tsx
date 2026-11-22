@@ -22,7 +22,7 @@ import { PIZZA_STYLES, type PizzaStyle } from '../../constants/enums';
 import { PillButton, StickerChip } from '../../components/sticker';
 import { ActiveDaysCalendar } from '../../components/active-days-calendar';
 import { StatRow } from '../../components/stat-row';
-import { colors, spacing, fontSize, radii, sticker, gradients } from '../../constants/theme';
+import { colors, spacing, fontSize, radii, shape, sticker } from '../../constants/theme';
 import { LOG_BUTTON_CLEARANCE } from '../../components/log-button';
 import { useObserve } from 'expo-observe';
 
@@ -118,12 +118,14 @@ export default function Profile() {
       >
         <View style={styles.headerRow}>
           <Text style={styles.title}>Profile</Text>
-          <Pressable onPress={() => router.push('/settings')} hitSlop={8}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Settings" onPress={() => router.push('/settings')} hitSlop={8}>
             <Ionicons name="settings-outline" size={24} color={colors.textSecondary} />
           </Pressable>
         </View>
 
         <Pressable
+          accessibilityRole={isEditing ? 'button' : 'image'}
+          accessibilityLabel={isEditing ? 'Change profile photo' : 'Profile photo'}
           style={styles.avatar}
           onPress={isEditing ? pickAvatar : undefined}
           disabled={!isEditing}
@@ -143,7 +145,7 @@ export default function Profile() {
           )}
           {isEditing && (
             <View style={styles.avatarBadge}>
-              <Ionicons name="camera" size={14} color="#FFFEF4" />
+              <Ionicons name="camera" size={14} color={colors.surface} />
             </View>
           )}
         </Pressable>
@@ -201,7 +203,7 @@ export default function Profile() {
                   <Text style={styles.favoriteChipText}>{profile.favoriteStyle}</Text>
                 </View>
               ) : null}
-              <Pressable style={styles.editButton} onPress={startEditing} hitSlop={4}>
+              <Pressable accessibilityRole="button" style={styles.editButton} onPress={startEditing} hitSlop={4}>
                 <Ionicons name="pencil-outline" size={14} color={colors.ink} />
                 <Text style={styles.editButtonText}>Edit profile</Text>
               </Pressable>
@@ -212,16 +214,13 @@ export default function Profile() {
         <StatRow
           runId={runId}
           stats={[
-            { icon: 'fork.knife', value: profile?.totalLogs ?? 0, label: 'Slices' },
+            { value: profile?.totalLogs ?? 0, label: 'Slices' },
             {
-              icon: 'star.fill',
-              iconColor: colors.gold,
               valueColor: colors.gold,
               value: profile?.totalPoints ?? 0,
               label: 'Points',
             },
-            // Ink, not ember: ember means "tap me" and a stat is not tappable.
-            { icon: 'mappin.and.ellipse', value: spotsVisited, label: 'Spots' },
+            { value: spotsVisited, label: 'Spots' },
           ]}
         />
 
@@ -262,7 +261,6 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
     backgroundColor: colors.bg,
-    experimental_backgroundImage: gradients.screen,
   },
   // Transparent so the wash on the parent shows through the scroll area.
   container: {
@@ -290,13 +288,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
     marginBottom: spacing.md,
-    borderWidth: 2,
-    borderColor: colors.ink,
   },
   avatarImage: {
     width: 76,
@@ -339,9 +335,7 @@ const styles = StyleSheet.create({
   // Passive display of the favorite style, not tappable, so it stays neutral.
   favoriteChip: {
     backgroundColor: colors.bgElevated,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radii.full,
+    borderRadius: shape.chip,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
@@ -350,17 +344,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '600',
   },
-  // Light StickerChip-like affordance; ink text keeps it quiet.
+  // A quiet text button: icon and words, no shape behind them.
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.surface,
-    borderRadius: radii.full,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    ...sticker.border,
-    ...sticker.shadowSm,
   },
   editButtonText: {
     fontSize: fontSize.sm,
@@ -440,8 +430,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgCard,
     borderColor: colors.border,
     borderWidth: 1,
-    shadowOpacity: 0,
-    elevation: 0,
+    ...sticker.shadowNone,
     opacity: 0.45,
   },
   badgeSymbol: {

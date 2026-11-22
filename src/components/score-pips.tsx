@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
-import { colors, spacing, fontSize, radii, sticker } from '../constants/theme';
+import { colors, spacing, fontSize, radii } from '../constants/theme';
 
 type Props = {
   label: string;
@@ -25,6 +25,9 @@ export function ScorePips({ label, value, onChange, max = 5 }: Props) {
         {Array.from({ length: max }, (_, i) => i + 1).map((pip) => (
           <Pressable
             key={pip}
+            accessibilityRole="button"
+            accessibilityLabel={`${pip} of ${max}`}
+            accessibilityState={{ selected: value !== null && pip <= value }}
             onPress={() => handlePress(pip)}
             style={[
               styles.pip,
@@ -67,16 +70,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: radii.sm,
-    backgroundColor: colors.surface,
+    // Unfilled pips are grey blocks, so the filled red run pops.
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
-    ...sticker.border,
-    // Unfilled pips keep a ghosted ink outline so the filled run pops.
-    borderColor: 'rgba(44,30,18,0.25)',
   },
   pipActive: {
     backgroundColor: colors.brand,
-    borderColor: colors.ink,
   },
   pipText: {
     fontSize: fontSize.md,

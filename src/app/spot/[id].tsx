@@ -11,7 +11,7 @@ import { PizzaCard } from '../../components/pizza-card';
 import { useDraftLogStore } from '../../state/draft-log';
 import { supabase } from '../../lib/supabase';
 import { PillButton } from '../../components/sticker';
-import { colors, spacing, fontSize, radii, sticker, gradients } from '../../constants/theme';
+import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
 import type { Spot } from '../../db/types';
 import type { DiscoverData } from '../../hooks/use-discover';
 
@@ -66,7 +66,7 @@ export default function SpotDetail() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => goBack()} hitSlop={8}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={28} color={colors.textPrimary} />
         </Pressable>
       </View>
@@ -122,7 +122,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-    experimental_backgroundImage: gradients.screen,
   },
   header: {
     flexDirection: 'row',

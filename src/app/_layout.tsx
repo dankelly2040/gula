@@ -3,13 +3,17 @@ import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import { useFonts } from 'expo-font';
+import { Montserrat_800ExtraBold } from '@expo-google-fonts/montserrat/800ExtraBold';
+import { Montserrat_900Black } from '@expo-google-fonts/montserrat/900Black';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Appearance, AppState, StyleSheet } from 'react-native';
 import { Observe, ObserveRoot, useObserve } from 'expo-observe';
 import { AnimatedSplash } from '../components/animated-splash';
+import { SplashDoneContext } from '../lib/splash-gate';
 import { colors } from '../constants/theme';
 
-// Hold the native splash (plain butter yellow) until the animated splash
+// Hold the native splash (plain white) until the animated splash
 // overlay, which shares the same background, is ready to take over.
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -34,9 +38,14 @@ function RootLayout() {
   const [splashDone, setSplashDone] = useState(false);
   const { markInteractive } = useObserve();
 
+  // Sign lettering (see fonts in constants/theme). A load error falls back
+  // to the system font rather than holding the app on the splash.
+  const [fontsLoaded, fontError] = useFonts({ Montserrat_800ExtraBold, Montserrat_900Black });
+  const ready = hydrated && (fontsLoaded || fontError !== null);
+
   useEffect(() => {
-    if (hydrated) void SplashScreen.hideAsync().catch(() => {});
-  }, [hydrated]);
+    if (ready) void SplashScreen.hideAsync().catch(() => {});
+  }, [ready]);
 
   useEffect(() => {
     const unsub = useSessionStore.persist.onFinishHydration(() => setHydrated(true));
@@ -56,12 +65,13 @@ function RootLayout() {
     return () => sub.remove();
   }, [hydrated]);
 
-  if (!hydrated) return null;
+  if (!ready) return null;
 
   return (
     <GestureHandlerRootView style={styles.root}>
       <QueryClientProvider client={queryClient}>
         <StatusBar style="dark" />
+        <SplashDoneContext.Provider value={splashDone}>
         <Stack
           screenOptions={{
             headerShown: false,
@@ -98,6 +108,7 @@ function RootLayout() {
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
         </Stack>
+        </SplashDoneContext.Provider>
         {!splashDone && (
           <AnimatedSplash
             onFinish={() => {

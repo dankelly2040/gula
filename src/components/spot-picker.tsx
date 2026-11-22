@@ -32,7 +32,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDraftLogStore } from '../state/draft-log';
 import { useSpotSearch, useCreateSpot } from '../hooks/use-spots';
 import type { Spot } from '../db/types';
-import { colors, spacing, fontSize, radii, sticker } from '../constants/theme';
+import { colors, spacing, fontSize, radii, sticker, shape } from '../constants/theme';
 
 /**
  * Spot picker for the details screen. The collapsed row opens a native
@@ -95,7 +95,7 @@ export function SpotPicker() {
           <Text style={styles.selectedText} numberOfLines={1}>
             {spotName}
           </Text>
-          <Pressable
+          <Pressable accessibilityRole="button"
             hitSlop={8}
             onPress={() => {
               setSpot(null, null);
@@ -171,7 +171,7 @@ export function SpotPicker() {
                   {trimmed.length > 0 && (
                     <View style={styles.results}>
                       {results.map((spot) => (
-                        <Pressable
+                        <Pressable accessibilityRole="button"
                           key={spot.id}
                           style={styles.resultRow}
                           onPress={() => selectSpot(spot)}
@@ -195,7 +195,7 @@ export function SpotPicker() {
                       ))}
 
                       {showAddRow && (
-                        <Pressable
+                        <Pressable accessibilityRole="button"
                           style={styles.resultRow}
                           onPress={handleCreate}
                           disabled={createSpot.isPending}
@@ -287,10 +287,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
-    ...sticker.border,
-    ...sticker.shadowSm,
-    borderRadius: radii.full,
+    // The chosen spot, as a grey chip.
+    backgroundColor: colors.bgElevated,
+    borderRadius: shape.chip,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     maxWidth: '100%',

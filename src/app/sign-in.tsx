@@ -8,13 +8,13 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '../lib/nav';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Host, TextInput } from '@expo/ui';
 import { SymbolView } from 'expo-symbols';
 import { PillButton } from '../components/sticker';
-import { colors, spacing, fontSize, radii, sticker, gradients } from '../constants/theme';
+import { colors, spacing, fontSize, radii, sticker } from '../constants/theme';
 import { useSessionStore } from '../state/session';
 import { upgradeToEmail, requestEmailCode, verifyEmailCode } from '../lib/auth';
 import { syncWithCloud } from '../db/sync';
@@ -28,6 +28,13 @@ export default function SignIn() {
   const isAnonymous = useSessionStore((s) => s.isAnonymous);
   const cloudUnavailableReason = useSessionStore((s) => s.cloudUnavailableReason);
   const completeOnboarding = useSessionStore((s) => s.completeOnboarding);
+
+  // `intent=first-log` is the account prompt that follows the first reward:
+  // same form, but the copy is about the points just earned, and leaving
+  // goes to the tabs instead of back to the reward modal.
+  const params = useLocalSearchParams<{ intent?: string; points?: string }>();
+  const afterFirstLog = params.intent === 'first-log';
+  const earned = Number(params.points) || 0;
 
   const isUpgrade = isAuthenticated && isAnonymous;
   const cloudUnavailable = cloudUnavailableReason !== null;
@@ -86,10 +93,21 @@ export default function SignIn() {
     }
   };
 
-  const title = isUpgrade ? 'Save your pizzas' : 'Welcome back';
-  const subtitle = isUpgrade
-    ? 'Add an email so your logs, points, and streaks survive a lost phone.'
-    : 'Sign in with your email to pick up where you left off.';
+  const leave = () => {
+    if (afterFirstLog) router.replace('/(tabs)');
+    else goBack();
+  };
+
+  const title = afterFirstLog
+    ? 'Keep your Pizza Points'
+    : isUpgrade
+      ? 'Save your pizzas'
+      : 'Welcome back';
+  const subtitle = afterFirstLog
+    ? `${earned > 0 ? `You just earned ${earned} Pizza Points. ` : ''}Create an account so your pizzas and points follow you to any phone.`
+    : isUpgrade
+      ? 'Add an email so your logs, points, and streaks survive a lost phone.'
+      : 'Sign in with your email to pick up where you left off.';
 
   return (
     <KeyboardAvoidingView
@@ -104,8 +122,8 @@ export default function SignIn() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Pressable style={styles.closeButton} onPress={() => goBack()}>
-            <Text style={styles.closeText}>Close</Text>
+          <Pressable accessibilityRole="button" style={styles.closeButton} onPress={leave}>
+            <Text style={styles.closeText}>{afterFirstLog ? 'Maybe later' : 'Close'}</Text>
           </Pressable>
         </View>
 
@@ -121,7 +139,7 @@ export default function SignIn() {
             <Text style={styles.subtitle}>
               Your account is linked to {email}. Your pizzas are safe.
             </Text>
-            <PillButton label="Done" onPress={() => goBack()} style={styles.submitButton} />
+            <PillButton label="Done" onPress={leave} style={styles.submitButton} />
           </View>
         ) : (
           <>
@@ -195,7 +213,7 @@ export default function SignIn() {
                   style={styles.submitButton}
                 />
 
-                <Pressable
+                <Pressable accessibilityRole="button"
                   style={styles.linkButton}
                   onPress={() => {
                     setStep('email');
@@ -219,7 +237,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-    experimental_backgroundImage: gradients.screen,
   },
   content: {
     paddingHorizontal: spacing.lg,

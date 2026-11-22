@@ -6,11 +6,16 @@ import {
   countByTier,
   kingdomById,
   kingdomFill,
+  heatSources,
   kingdomForPoint,
+  kingdomLeader,
+  kingdomsLed,
   placesInKingdom,
+  pointsByKingdom,
   visibleLabelKingdoms,
   visibleTiers,
 } from './realm';
+import { DEMO_RIVAL, DEMO_SELF_EATEN } from './realm-demo';
 import { KINGDOM_FILLS } from '@/constants/theme';
 
 describe('realm data', () => {
@@ -78,11 +83,79 @@ describe('visibleTiers', () => {
 });
 
 describe('visibleLabelKingdoms', () => {
-  test('city zoom holds back the six crowded names', () => {
-    expect(visibleLabelKingdoms(10.4)).toHaveLength(14);
+  test('city zoom shows no names, so the map stays clean', () => {
+    expect(visibleLabelKingdoms(10.3)).toHaveLength(0);
+  });
+
+  test('moving in brings the names, holding back the six crowded ones', () => {
+    expect(visibleLabelKingdoms(11.3)).toHaveLength(14);
   });
 
   test('closer zoom shows every name', () => {
     expect(visibleLabelKingdoms(12)).toHaveLength(20);
+  });
+});
+
+describe('territory points', () => {
+  const ballard = KINGDOMS.find((k) => k.id === 'ballard')!;
+  const capitolHill = KINGDOMS.find((k) => k.id === 'capitol-hill')!;
+  const inBallard = { lat: ballard.center[0], lng: ballard.center[1] };
+  const inCapitolHill = { lat: capitolHill.center[0], lng: capitolHill.center[1] };
+  const inBrooklyn = { lat: 40.6782, lng: -73.9442 };
+
+  test('adds up points inside each kingdom', () => {
+    const totals = pointsByKingdom([
+      { ...inBallard, points: 10 },
+      { ...inBallard, points: 25 },
+      { ...inCapitolHill, points: 10 },
+    ]);
+    expect(totals).toEqual({ ballard: 35, 'capitol-hill': 10 });
+  });
+
+  test('ignores pizza eaten outside the realm', () => {
+    expect(pointsByKingdom([{ ...inBrooklyn, points: 50 }])).toEqual({});
+  });
+
+  test('names the leader of a kingdom', () => {
+    const you = { ballard: 35, downtown: 10 };
+    const rival = { ballard: 20, 'capitol-hill': 40, downtown: 10 };
+    expect(kingdomLeader('ballard', you, rival)).toBe('you');
+    expect(kingdomLeader('capitol-hill', you, rival)).toBe('rival');
+    expect(kingdomLeader('downtown', you, rival)).toBe('tie');
+    expect(kingdomLeader('magnolia', you, rival)).toBeNull();
+  });
+
+  test('counts kingdoms led, leaving out ties and empty kingdoms', () => {
+    const you = { ballard: 35, downtown: 10 };
+    const rival = { ballard: 20, 'capitol-hill': 40, downtown: 10 };
+    expect(kingdomsLed(you, rival)).toEqual({ you: 1, rival: 1 });
+  });
+
+  test('merges repeat visits to one spot into a hotter source', () => {
+    const sources = heatSources([
+      { ...inBallard, points: 10 },
+      { ...inBallard, points: 15 },
+      { ...inCapitolHill, points: 10 },
+    ]);
+    expect(sources).toHaveLength(2);
+    expect(sources.find((s) => s.lat === inBallard.lat)?.points).toBe(25);
+  });
+});
+
+describe('demo rival', () => {
+  test('has eaten only at real places inside the realm', () => {
+    expect(DEMO_RIVAL.eaten.length).toBeGreaterThan(8);
+    for (const e of DEMO_RIVAL.eaten) {
+      expect(kingdomForPoint(e.lat, e.lng)).not.toBeNull();
+      expect(e.points).toBeGreaterThan(0);
+    }
+  });
+
+  test('the sample for you and the rival contest some kingdoms and split others', () => {
+    const you = pointsByKingdom(DEMO_SELF_EATEN);
+    const rival = pointsByKingdom(DEMO_RIVAL.eaten);
+    const led = kingdomsLed(you, rival);
+    expect(led.you).toBeGreaterThan(0);
+    expect(led.rival).toBeGreaterThan(0);
   });
 });

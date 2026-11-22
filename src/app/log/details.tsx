@@ -20,6 +20,7 @@ import { computePizzaScore, computeExperienceScore } from '../../db/types';
 import type { PizzaLog } from '../../db/types';
 import { generateId } from '../../lib/id';
 import { getCurrentCoords } from '../../lib/location';
+import { dropCutout, keepCutout } from '../../lib/cutouts';
 import { SpotPicker } from '../../components/spot-picker';
 import {
   PIZZA_STYLES,
@@ -29,7 +30,7 @@ import {
   COMMON_TOPPINGS,
 } from '../../constants/enums';
 import { PillButton, StickerChip } from '../../components/sticker';
-import { colors, spacing, fontSize, radii, sticker, gradients } from '../../constants/theme';
+import { colors, spacing, fontSize, radii, sticker } from '../../constants/theme';
 
 // Sentinel tag for the "no selection" row in menu pickers. Native `tag`
 // values must be string | number, so null is represented explicitly.
@@ -105,6 +106,7 @@ export default function Details() {
 
   const handleSave = async () => {
     if (isSaving) return;
+    const liftedCutout = draft.lift.status === 'done' ? (draft.lift.result?.cutoutUri ?? null) : null;
 
     if (editId) {
       const original = logs?.find((l) => l.id === editId);
@@ -129,6 +131,11 @@ export default function Details() {
         await updateLog.mutateAsync(updated);
       } catch {
         return;
+      }
+      // A replaced photo makes the stored cutout stale.
+      if (draft.photoUri !== original.photoUri) {
+        if (liftedCutout) keepCutout(liftedCutout, original.id);
+        else dropCutout(original.id);
       }
       draft.reset();
       if (router.canDismiss()) {
@@ -167,6 +174,8 @@ export default function Details() {
     } catch {
       return;
     }
+    // Keep the lifted pizza so the log can show it floating later.
+    if (liftedCutout) keepCutout(liftedCutout, log.id);
     draft.reset();
     const breakdown = encodeURIComponent(
       rewards.breakdown.map((line) => `${line.label}:${line.points}`).join('|')
@@ -191,7 +200,7 @@ export default function Details() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => goBack()}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => goBack()}>
           <Ionicons name="arrow-back" size={28} color={colors.textPrimary} />
         </Pressable>
         <Text style={styles.title}>Details</Text>
@@ -289,7 +298,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-    experimental_backgroundImage: gradients.screen,
   },
   header: {
     flexDirection: 'row',

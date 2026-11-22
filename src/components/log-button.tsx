@@ -9,7 +9,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { colors, radii, sticker } from '../constants/theme';
+import { colors, radii, STICKER_SHADOW_RGB } from '../constants/theme';
 
 const SIZE = 64;
 const LIFT = 50; // clears the tab bar's label row
@@ -38,8 +38,9 @@ export function LogButton() {
       { translateY: press.value * 4 },
       { scale: 1 - press.value * 0.06 },
     ],
-    // Ride the shadow down with the button so it reads as pressed into the page.
-    shadowOffset: { width: 0, height: 7 - press.value * 5 },
+    // The button floats, so it carries the soft shadow. Pressing it brings
+    // it down toward the page and the shadow tightens.
+    boxShadow: `0 ${8 - press.value * 5}px ${22 - press.value * 12}px rgba(${STICKER_SHADOW_RGB}, 0.24)`,
   }));
 
   return (
@@ -88,7 +89,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.brand,
-    ...sticker.border,
-    ...sticker.shadowLg,
   },
 });

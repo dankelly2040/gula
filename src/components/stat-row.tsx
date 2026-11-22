@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, type TextStyle } from 'react-native';
-import { SymbolView } from 'expo-symbols';
-import * as Haptics from 'expo-haptics';
 import Animated, {
   Easing,
   runOnJS,
@@ -9,34 +7,23 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { colors, fontSize, radii, spacing, sticker } from '../constants/theme';
+import { colors, fonts, spacing } from '../constants/theme';
 
-// A row of core stats, Opal-style: icon well, big number, small uppercase
-// label. The cards land one after another on every visit to the screen, each
-// counting up with its own tap, so arriving feels like stickers being pressed
-// down rather than a static readout.
+// A row of core stats set straight on the page: a big figure with a small
+// capital label under it, no card, no icon. The figures rise in one after
+// another on every visit to the screen, each counting up from zero.
 
 const STAGGER_MS = 110;
 const COUNT_MS = 750;
 
 export type Stat = {
-  icon: string;
-  /** Defaults to ink. Ember is reserved for things you can tap. */
-  iconColor?: string;
   value: number;
+  /** Defaults to ink. Gold is reserved for points. */
   valueColor?: string;
   label: string;
 };
-
-function tap() {
-  // Simulators have no Taptic Engine, so this is only felt on a device.
-  if (process.env.EXPO_OS === 'ios') {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }
-}
 
 /**
  * Counts from zero to `value`. Reanimated drives the ramp on the UI thread;
@@ -80,7 +67,7 @@ export function CountUp({
   return <Text style={style}>{display}</Text>;
 }
 
-function StatCard({ stat, index, runId }: { stat: Stat; index: number; runId: number }) {
+function StatFigure({ stat, index, runId }: { stat: Stat; index: number; runId: number }) {
   const enter = useSharedValue(0);
   const delay = index * STAGGER_MS;
 
@@ -88,33 +75,21 @@ function StatCard({ stat, index, runId }: { stat: Stat; index: number; runId: nu
     enter.value = 0;
     enter.value = withDelay(
       delay,
-      withSpring(1, { damping: 13, stiffness: 180, mass: 0.7 }, (finished) => {
-        if (finished) runOnJS(tap)();
-      })
+      withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) })
     );
   }, [delay, runId, enter]);
 
   const style = useAnimatedStyle(() => ({
     opacity: enter.value,
-    transform: [
-      { translateY: (1 - enter.value) * 18 },
-      { scale: 0.9 + enter.value * 0.1 },
-    ],
+    transform: [{ translateY: (1 - enter.value) * 10 }],
   }));
 
   return (
     <Animated.View
-      style={[styles.card, style]}
+      style={[styles.figure, style]}
       accessible
       accessibilityLabel={`${stat.value} ${stat.label}`}
     >
-      <View style={styles.iconWell}>
-        <SymbolView
-          name={stat.icon as never}
-          size={20}
-          tintColor={stat.iconColor ?? colors.ink}
-        />
-      </View>
       <CountUp
         value={stat.value}
         style={[styles.value, { color: stat.valueColor ?? colors.textPrimary }]}
@@ -130,7 +105,7 @@ export function StatRow({ stats, runId }: { stats: Stat[]; runId: number }) {
   return (
     <View style={styles.row}>
       {stats.map((stat, i) => (
-        <StatCard key={stat.label} stat={stat} index={i} runId={runId} />
+        <StatFigure key={stat.label} stat={stat} index={i} runId={runId} />
       ))}
     </View>
   );
@@ -139,45 +114,28 @@ export function StatRow({ stats, runId }: { stats: Stat[]; runId: number }) {
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
-  card: {
+  // Equal columns, with each figure centered over its label. Equal widths
+  // also mean a figure counting up never pushes its neighbors around.
+  figure: {
     flex: 1,
+    flexBasis: 0,
     alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    borderCurve: 'continuous',
-    paddingVertical: spacing.md,
-    // Narrow sides on purpose: at spacing.md a third-width card leaves too
-    // little room for a label like "Slices logged", which then breaks
-    // mid-word.
-    paddingHorizontal: spacing.xs,
-    ...sticker.border,
-    ...sticker.shadow,
-  },
-  iconWell: {
-    width: 34,
-    height: 34,
-    borderRadius: radii.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.frame,
-    ...sticker.border,
   },
   value: {
-    fontSize: fontSize.xxl,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'],
+    fontFamily: fonts.display,
+    fontSize: 36,
+    lineHeight: 42,
     textAlign: 'center',
   },
   label: {
-    fontSize: fontSize.xs,
-    fontWeight: '700',
-    letterSpacing: 0.6,
+    fontFamily: fonts.label,
+    fontSize: 10.5,
+    lineHeight: 14,
+    letterSpacing: 1.4,
     textTransform: 'uppercase',
-    color: colors.textMuted,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
 });

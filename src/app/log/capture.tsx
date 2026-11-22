@@ -15,26 +15,21 @@ import {
 } from 'expo-camera';
 import { useDraftLogStore } from '../../state/draft-log';
 import { CircleButton, PillButton } from '../../components/sticker';
-import { colors, spacing, fontSize, radii, gradients } from '../../constants/theme';
+import { CaptureStatus, CaptureTitle, captureShape } from '../../components/capture-chrome';
+import { colors, spacing, fontSize } from '../../constants/theme';
 
-// Sticker-card chrome, scoped to the capture moment: mustard frame, hard
-// offset shadows, chunky white utility circles, one big pill action.
-const FRAME = colors.frame;
+// The capture moment in the app's flat shapes: the photo is a plain rounded
+// rectangle with no frame, a line under it says what is happening, and the
+// controls are grey circles around one red button.
+const FREEZE_MS = 550;
 const INK = colors.ink;
-const WHITE = colors.surface;
 
-function StickerCard({ badge, children }: { badge: string; children: ReactNode }) {
+function Shot({ status, children }: { status: string; children: ReactNode }) {
   return (
-    <View style={styles.card}>
-      <View style={styles.viewport}>{children}</View>
-      {/* playful corner confetti, echoing the reward burst */}
-      <View style={[styles.dot, styles.dotTopLeft]} />
-      <View style={[styles.dot, styles.dotBottomRight]} />
-      <View style={styles.sprinkle} />
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>{badge}</Text>
-      </View>
-    </View>
+    <>
+      <View style={[captureShape.viewport, styles.viewport]}>{children}</View>
+      <CaptureStatus>{status}</CaptureStatus>
+    </>
   );
 }
 
@@ -43,6 +38,12 @@ export default function Capture() {
   const insets = useSafeAreaInsets();
   const photoUri = useDraftLogStore((s) => s.photoUri);
   const setPhoto = useDraftLogStore((s) => s.setPhoto);
+  const startLift = useDraftLogStore((s) => s.startLift);
+  const lift = useDraftLogStore((s) => s.lift);
+  const liftStartedAt = useRef<number | null>(null);
+  // True from the snap until the rate screen takes over: the card holds still
+  // and the controls dim, like a shutter that has not come back yet.
+  const [holding, setHolding] = useState(false);
   const reset = useDraftLogStore((s) => s.reset);
 
   const cameraRef = useRef<CameraView>(null);
@@ -60,6 +61,29 @@ export default function Capture() {
     }
   }, [permission, requestPermission]);
 
+  // The photo is in: hold it still in the card ("Lifting your slice") while
+  // Vision finds the subject, then hand the moment to the rate screen, which
+  // plays the dissolve. The hold lasts at least FREEZE_MS even when Vision is
+  // instant, so the beat reads as the app thinking.
+  const beginLift = (uri: string) => {
+    liftStartedAt.current = Date.now();
+    setHolding(true);
+    setPhoto(uri);
+    void startLift(uri);
+  };
+
+  useEffect(() => {
+    if (lift.status !== 'done' || liftStartedAt.current === null) return;
+    const elapsed = Date.now() - liftStartedAt.current;
+    const id = setTimeout(() => {
+      liftStartedAt.current = null;
+      router.push({ pathname: '/log/rate', params: { lift: '1' } });
+      // Release after the push has had a frame to mount the rate screen.
+      setTimeout(() => setHolding(false), 600);
+    }, Math.max(0, FREEZE_MS - elapsed));
+    return () => clearTimeout(id);
+  }, [lift.status, router]);
+
   const pickFromLibrary = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
@@ -69,7 +93,7 @@ export default function Capture() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      setPhoto(result.assets[0].uri);
+      beginLift(result.assets[0].uri);
     }
   };
 
@@ -79,7 +103,7 @@ export default function Capture() {
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
       if (photo?.uri) {
-        setPhoto(photo.uri);
+        beginLift(photo.uri);
       }
     } catch {
       // Capture failed (for example on hardware without a camera); stay on the live view.
@@ -112,31 +136,31 @@ export default function Capture() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + spacing.md }]}>
-      <Text style={styles.title}>Snap your slice</Text>
-      <Text style={styles.tagline}>snap · rate · log</Text>
+      <CaptureTitle />
 
       {photoUri ? (
         <>
-          <StickerCard badge="Looking good">
+          <Shot status={holding ? 'Lifting your slice' : 'Looking good'}>
             <Image source={{ uri: photoUri }} style={styles.fill} contentFit="cover" />
-          </StickerCard>
-          <View style={styles.controls}>
-            <CircleButton onPress={handleClose}>
+          </Shot>
+          <View style={[styles.controls, holding && styles.controlsHeld]}>
+            <CircleButton onPress={handleClose} label="Close">
               <Ionicons name="close" size={24} color={INK} />
             </CircleButton>
             <PillButton
-              onPress={() => router.push('/log/rate')}
+              onPress={() => router.push({ pathname: '/log/rate', params: { lift: '1' } })}
+              disabled={holding || lift.status === 'pending'}
               icon="checkmark"
               label="Rate it"
             />
-            <CircleButton onPress={handleRetake}>
+            <CircleButton onPress={handleRetake} label="Retake photo">
               <Ionicons name="refresh" size={22} color={INK} />
             </CircleButton>
           </View>
         </>
       ) : cameraBlocked ? (
         <>
-          <StickerCard badge={!permission.granted ? 'Camera access needed' : 'Camera unavailable'}>
+          <Shot status={!permission.granted ? 'Camera access needed' : 'Camera unavailable'}>
             <View style={styles.blockedViewport}>
               <Ionicons name="camera-outline" size={48} color={colors.textMuted} />
               <Text style={styles.blockedText}>
@@ -145,25 +169,25 @@ export default function Capture() {
                   : 'The camera could not start here. Pick a photo from your library instead.'}
               </Text>
               {!permission.granted && (
-                <Pressable onPress={() => Linking.openSettings()} hitSlop={8}>
+                <Pressable accessibilityRole="button" onPress={() => Linking.openSettings()} hitSlop={8}>
                   <Text style={styles.settingsLink}>Open settings</Text>
                 </Pressable>
               )}
             </View>
-          </StickerCard>
+          </Shot>
           <View style={styles.controls}>
-            <CircleButton onPress={handleClose}>
+            <CircleButton onPress={handleClose} label="Close">
               <Ionicons name="close" size={24} color={INK} />
             </CircleButton>
             <PillButton onPress={pickFromLibrary} icon="photo.on.rectangle" label="Library" />
-            <CircleButton onPress={handleSkip}>
+            <CircleButton onPress={handleSkip} label="Skip photo">
               <Ionicons name="arrow-forward" size={22} color={INK} />
             </CircleButton>
           </View>
         </>
       ) : (
         <>
-          <StickerCard badge="Say cheese">
+          <Shot status="Say cheese">
             <CameraView
               ref={cameraRef}
               style={styles.fill}
@@ -174,6 +198,8 @@ export default function Capture() {
             />
             <View style={styles.viewportButtons}>
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={flash === 'off' ? 'Turn flash on' : 'Turn flash off'}
                 onPress={() => setFlash((f) => (f === 'off' ? 'on' : 'off'))}
                 hitSlop={6}
                 style={styles.viewportButton}
@@ -185,6 +211,8 @@ export default function Capture() {
                 />
               </Pressable>
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Flip camera"
                 onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
                 hitSlop={6}
                 style={styles.viewportButton}
@@ -192,9 +220,9 @@ export default function Capture() {
                 <SymbolView name="arrow.triangle.2.circlepath.camera" size={16} tintColor={INK} />
               </Pressable>
             </View>
-          </StickerCard>
+          </Shot>
           <View style={styles.controls}>
-            <CircleButton onPress={handleClose}>
+            <CircleButton onPress={handleClose} label="Close">
               <Ionicons name="close" size={24} color={INK} />
             </CircleButton>
             <PillButton
@@ -203,14 +231,14 @@ export default function Capture() {
               icon="camera.fill"
               label="Snap it"
             />
-            <CircleButton onPress={pickFromLibrary}>
+            <CircleButton onPress={pickFromLibrary} label="Choose from library">
               <Ionicons name="images-outline" size={22} color={INK} />
             </CircleButton>
           </View>
         </>
       )}
 
-      <Pressable onPress={handleSkip} hitSlop={8} style={styles.skip}>
+      <Pressable accessibilityRole="button" onPress={handleSkip} hitSlop={8} style={styles.skip}>
         <Text style={styles.skipText}>Skip photo</Text>
       </Pressable>
     </View>
@@ -221,93 +249,14 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
-    experimental_backgroundImage: gradients.screen,
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
   },
-  title: {
-    fontSize: fontSize.xl,
-    fontWeight: '800',
-    color: INK,
-    marginTop: spacing.sm,
-  },
-  tagline: {
-    fontSize: fontSize.xs,
-    fontWeight: '700',
-    letterSpacing: 3,
-    textTransform: 'uppercase',
-    color: colors.textMuted,
-    marginTop: 2,
-    marginBottom: spacing.lg,
-  },
-  card: {
-    alignSelf: 'stretch',
-    backgroundColor: FRAME,
-    borderRadius: 28,
-    padding: spacing.md,
-    paddingTop: spacing.lg + spacing.xs,
-    shadowColor: INK,
-    shadowOffset: { width: 0, height: 7 },
-    shadowOpacity: 0.3,
-    shadowRadius: 0,
-    elevation: 8,
-  },
   viewport: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    aspectRatio: 3 / 4,
-    backgroundColor: '#1B1610',
+    backgroundColor: colors.viewportDark,
   },
   fill: {
     flex: 1,
-  },
-  badge: {
-    position: 'absolute',
-    top: -14,
-    alignSelf: 'center',
-    backgroundColor: WHITE,
-    borderRadius: radii.full,
-    borderWidth: 1.5,
-    borderColor: INK,
-    paddingVertical: 6,
-    paddingHorizontal: spacing.md,
-    shadowColor: INK,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 0,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    color: INK,
-  },
-  dot: {
-    position: 'absolute',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  dotTopLeft: {
-    top: 10,
-    left: 14,
-    backgroundColor: '#C43C24',
-  },
-  dotBottomRight: {
-    bottom: 10,
-    right: 16,
-    backgroundColor: '#75A24E',
-  },
-  sprinkle: {
-    position: 'absolute',
-    bottom: 12,
-    left: 22,
-    width: 16,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.brand,
-    transform: [{ rotate: '-18deg' }],
   },
   viewportButtons: {
     position: 'absolute',
@@ -320,9 +269,8 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: WHITE,
-    borderWidth: 1.5,
-    borderColor: INK,
+    // No outline: a solid light disc reads on any photo.
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -331,7 +279,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.lg,
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
+  },
+  controlsHeld: {
+    opacity: 0.35,
   },
   skip: {
     marginTop: spacing.lg,

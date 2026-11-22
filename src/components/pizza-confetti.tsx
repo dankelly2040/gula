@@ -9,6 +9,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
+import { illustration } from '../constants/theme';
 
 // One-shot pizza confetti explosion: tiny slices, pepperoni, cheese, and
 // crust bits burst from a point, tumble under gravity, and fade. Same
@@ -19,11 +20,11 @@ const DURATION_MS = 3000;
 const COUNT = 220;
 const GRAVITY = 1050; // px/s^2
 
-const CHEESE = '#F6C445';
-const CHEESE_LIGHT = '#F1E599';
-const PEPPERONI = '#C43C24';
-const CRUST = '#B84508';
-const EMBER = '#D9530E';
+const CHEESE = illustration.cheese;
+const CHEESE_LIGHT = illustration.cheesePale;
+const PEPPERONI = illustration.pepperoni;
+const CRUST = illustration.crust;
+const EMBER = illustration.crustLight;
 
 function mulberry32(seed: number) {
   let a = seed >>> 0;

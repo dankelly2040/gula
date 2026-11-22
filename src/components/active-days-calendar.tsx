@@ -59,13 +59,16 @@ export function ActiveDaysCalendar({ logs }: { logs: PizzaLog[] }) {
       <Text style={styles.cardTitle}>Active days</Text>
 
       <View style={styles.monthRow}>
-        <Pressable onPress={() => setOffset((o) => o + 1)} hitSlop={10}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Previous month" onPress={() => setOffset((o) => o + 1)} hitSlop={10}>
           <SymbolView name="chevron.left" size={16} tintColor={colors.textSecondary} />
         </Pressable>
         <Text style={styles.monthLabel}>
           {MONTHS[viewed.month]} {viewed.year}
         </Text>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Next month"
+          accessibilityState={{ disabled: offset === 0 }}
           onPress={() => setOffset((o) => Math.max(0, o - 1))}
           hitSlop={10}
           disabled={offset === 0}

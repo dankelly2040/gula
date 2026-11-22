@@ -22,6 +22,8 @@ export function PizzaCard({ log, rank }: Props) {
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${log.spotName ?? 'Pizza'}, ${log.moneyShot} ${zone.label}, ${dateStr}`}
       style={styles.card}
       onPress={() => router.push(`/pizza/${log.id}`)}
     >

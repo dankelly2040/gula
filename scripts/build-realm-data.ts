@@ -9,8 +9,10 @@
  *   tier-overrides.csv          Optional editorial tiers: osm_id,tier[,note]
  *
  * Outputs (src/data/):
- *   kingdoms.json   simplified district rings plus a label point
- *   places.json     every place with its tier and kingdom
+ *   kingdoms.json     simplified district rings plus a label point
+ *   places.json       every place with its tier and kingdom
+ *   realm-lines.json  the lines the map draws: the land outline and the
+ *                     borders between kingdoms
  *
  * Tier rule: an explicit override wins; otherwise a chain brand is tier 1 and
  * everything else is tier 2. Tiers 3 and 4 are editorial and only come from
@@ -192,6 +194,104 @@ const kingdoms: Kingdom[] = districts.features
   })
   .sort((a, b) => a.name.localeCompare(b.name));
 
+// ── Lines ───────────────────────────────────────────────────────────────────
+//
+// The map is drawn by the app, not by a map service: a white page, the land
+// as one outline, and a finer line along every border between kingdoms.
+//
+// The atlas is topologically clean. Where two districts meet, both carry the
+// same run of vertices. So an edge used by two districts is a border between
+// kingdoms, and an edge used by only one is the edge of the city: the coast
+// and the city limits. Sorting the edges that way gives one true outline and
+// one line per border, where drawing each kingdom's own ring would draw every
+// border twice, a little apart, because the rings are simplified one by one.
+
+// About 9 m. Finer than the kingdom rings, because these lines are what the
+// user looks at when they zoom in.
+const LINE_TOLERANCE_DEG = 0.00008;
+// Outline loops smaller than this are docks and slivers, not land worth a line.
+const MIN_OUTLINE_AREA_DEG2 = 1.5e-6;
+
+const nodeKey = ([x, y]: LngLat) => `${x.toFixed(7)},${y.toFixed(7)}`;
+
+type Edge = { a: LngLat; b: LngLat; uses: number };
+const edges = new Map<string, Edge>();
+for (const rings of rawRings.values()) {
+  for (const ring of rings) {
+    for (let i = 0; i + 1 < ring.length; i++) {
+      const a = ring[i];
+      const b = ring[i + 1];
+      const ka = nodeKey(a);
+      const kb = nodeKey(b);
+      if (ka === kb) continue;
+      const key = ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+      const edge = edges.get(key);
+      if (edge) edge.uses += 1;
+      else edges.set(key, { a, b, uses: 1 });
+    }
+  }
+}
+
+/**
+ * Join loose edges into lines. A line runs from one junction (a node where
+ * anything other than two edges meet) to the next. Edges left over after
+ * that form closed loops with no junction on them.
+ */
+function chain(list: Edge[]): Ring[] {
+  const at = new Map<string, { point: LngLat; edges: number[] }>();
+  list.forEach((e, i) => {
+    for (const point of [e.a, e.b]) {
+      const k = nodeKey(point);
+      const node = at.get(k);
+      if (node) node.edges.push(i);
+      else at.set(k, { point, edges: [i] });
+    }
+  });
+  const used = new Array<boolean>(list.length).fill(false);
+  const lines: Ring[] = [];
+
+  const walk = (startKey: string, firstEdge: number): Ring => {
+    const line: Ring = [at.get(startKey)!.point];
+    let key = startKey;
+    let edge = firstEdge;
+    for (;;) {
+      used[edge] = true;
+      const e = list[edge];
+      const next = nodeKey(e.a) === key ? e.b : e.a;
+      line.push(next);
+      key = nodeKey(next);
+      const node = at.get(key)!;
+      if (node.edges.length !== 2) break; // a junction or a loose end
+      const onward = node.edges.find((i) => !used[i]);
+      if (onward === undefined) break; // back at the start of a loop
+      edge = onward;
+    }
+    return line;
+  };
+
+  for (const [key, node] of at) {
+    if (node.edges.length === 2) continue;
+    for (const edge of node.edges) if (!used[edge]) lines.push(walk(key, edge));
+  }
+  for (const [key, node] of at) {
+    const edge = node.edges.find((i) => !used[i]);
+    if (edge !== undefined) lines.push(walk(key, edge));
+  }
+  return lines;
+}
+
+const toLatLng = (line: Ring) =>
+  simplify(line, LINE_TOLERANCE_DEG).map(([x, y]) => [round5(y), round5(x)] as [number, number]);
+
+const allEdges = [...edges.values()];
+const strayEdges = allEdges.filter((e) => e.uses > 2).length;
+const outlineLoops = chain(allEdges.filter((e) => e.uses === 1));
+const outline = outlineLoops
+  .filter((loop) => ringArea(loop) >= MIN_OUTLINE_AREA_DEG2)
+  .sort((a, b) => ringArea(b) - ringArea(a))
+  .map(toLatLng);
+const borders = chain(allEdges.filter((e) => e.uses === 2)).map(toLatLng);
+
 // ── Places ──────────────────────────────────────────────────────────────────
 
 const overrides = new Map<string, Place['tier']>();
@@ -255,9 +355,15 @@ const places: Place[] = osm.elements
 
 writeFileSync(out('kingdoms.json'), JSON.stringify(kingdoms));
 writeFileSync(out('places.json'), JSON.stringify(places));
+writeFileSync(out('realm-lines.json'), JSON.stringify({ outline, borders }));
 
 const vertexCount = kingdoms.reduce((n, k) => n + k.rings.reduce((m, r) => m + r.length, 0), 0);
 const tierCounts = [1, 2, 3, 4].map((t) => places.filter((p) => p.tier === t).length);
 console.log(`kingdoms: ${kingdoms.length}, rings: ${kingdoms.reduce((n, k) => n + k.rings.length, 0)}, vertices: ${vertexCount}`);
 console.log(`places: ${places.length}, tiers 1..4: ${tierCounts.join(' / ')}, overrides: ${overrides.size}`);
+const count = (lines: unknown[][]) => lines.reduce((n, l) => n + l.length, 0);
+console.log(
+  `lines: outline ${outline.length} of ${outlineLoops.length} loops (${count(outline)} vertices), ` +
+    `borders ${borders.length} (${count(borders)} vertices), edges used by 3+ districts: ${strayEdges}`
+);
 console.log(`unassigned to a kingdom: ${places.filter((p) => p.kingdomId === null).length}`);

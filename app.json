@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Local Pizza",
+    "name": "Pizza Quest",
     "slug": "gula",
     "scheme": "gula",
     "orientation": "portrait",
@@ -16,7 +16,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#F7F1E3"
+        "backgroundColor": "#FFFFFF"
       },
       "package": "com.dannymanning.gula",
       "permissions": [
@@ -55,26 +55,26 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Local Pizza to access your photos to add pizza pics to your logs.",
-          "cameraPermission": "Allow Local Pizza to use your camera to snap your slice."
+          "photosPermission": "Allow Pizza Quest to access your photos to add pizza pics to your logs.",
+          "cameraPermission": "Allow Pizza Quest to use your camera to snap your slice."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow Local Pizza to use your location to find pizza spots near you."
+          "locationWhenInUsePermission": "Allow Pizza Quest to use your location to find pizza spots near you."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Local Pizza to use your camera to snap your slice."
+          "cameraPermission": "Allow Pizza Quest to use your camera to snap your slice."
         }
       ],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#F7F1E3"
+          "backgroundColor": "#FFFFFF"
         }
       ],
       "expo-notifications",

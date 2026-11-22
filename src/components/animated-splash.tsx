@@ -28,7 +28,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { colors } from '@/constants/theme';
+import { colors, illustration } from '@/constants/theme';
 
 // --- Timeline (ms) ---------------------------------------------------------
 
@@ -48,10 +48,10 @@ const TRAVEL_FRACTION = 0.5;
 
 // --- Palette (crust / cheese / pepperoni) ----------------------------------
 
-const CRUST_COLORS = ['#B84508', '#D9530E'];
-const CHEESE_PRIMARY = '#F6C445';
-const CHEESE_PALE = '#F1E599';
-const PEPPERONI = '#C43C24';
+const CRUST_COLORS = [illustration.crust, illustration.crustLight];
+const CHEESE_PRIMARY = illustration.cheese;
+const CHEESE_PALE = illustration.cheesePale;
+const PEPPERONI = illustration.pepperoni;
 
 // --- Geometry ---------------------------------------------------------------
 
@@ -454,6 +454,8 @@ const styles = StyleSheet.create({
     // Must exactly match the native splash background for a seamless handoff.
     backgroundColor: colors.bg,
     zIndex: 9999,
+    // Android z-order for the overlay, not a shadow: elevation is what
+    // orders sibling views there.
     elevation: 9999,
   },
 });

@@ -21,7 +21,7 @@ import { signOut } from '../lib/auth';
 import { enableStreakReminders } from '../lib/notifications';
 import { useEnsureProfile, useSaveProfile, useAchievements } from '../hooks/use-profile';
 import { usePizzaLogs } from '../hooks/use-pizza-logs';
-import { colors, spacing, fontSize, gradients } from '../constants/theme';
+import { colors, spacing, fontSize } from '../constants/theme';
 
 export default function Settings() {
   const router = useRouter();
@@ -65,7 +65,7 @@ export default function Settings() {
       if (!granted) {
         Alert.alert(
           'Notifications are off',
-          'Enable notifications for Local Pizza in system settings to get streak reminders.'
+          'Enable notifications for Pizza Quest in system settings to get streak reminders.'
         );
       }
     } else {
@@ -111,7 +111,7 @@ export default function Settings() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => goBack()} hitSlop={8}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={28} color={colors.textPrimary} />
         </Pressable>
         <RNText style={styles.title}>Settings</RNText>
@@ -162,7 +162,7 @@ export default function Settings() {
             />
           </Section>
 
-          <Section title="Data" footer={<Text>Local Pizza v1.0.0, built with Expo</Text>}>
+          <Section title="Data" footer={<Text>Pizza Quest v1.0.0, built with Expo</Text>}>
             <Button label="Export my data" onPress={() => void handleExport()} />
             <Button label="Clear all data" role="destructive" onPress={handleClearData} />
           </Section>
@@ -176,7 +176,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-    experimental_backgroundImage: gradients.screen,
   },
   header: {
     flexDirection: 'row',

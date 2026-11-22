@@ -1,21 +1,35 @@
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import * as Haptics from 'expo-haptics';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  SensorType,
+  useAnimatedScrollHandler,
+  useAnimatedSensor,
+  useReducedMotion,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRankedLogs } from '../../hooks/use-pizza-logs';
 import { useProfile } from '../../hooks/use-profile';
-import { PizzaCard } from '../../components/pizza-card';
+import { FloatingPizza, FLOAT_ITEM_HEIGHT } from '../../components/floating-pizza';
 import { StatRow } from '../../components/stat-row';
 import { FadeUp } from '../../components/fade-up';
-import { PillButton, StickerChip } from '../../components/sticker';
-import { colors, spacing, fontSize, gradients } from '../../constants/theme';
+import { PillButton } from '../../components/sticker';
+import { TextTabs } from '../../components/text-tabs';
+import { colors, fonts, spacing, fontSize } from '../../constants/theme';
 import { LOG_BUTTON_CLEARANCE } from '../../components/log-button';
 import { useObserve } from 'expo-observe';
 
 type SortKey = 'moneyShot' | 'pizzaScore' | 'date';
+
+// The pizzas hang in a two-column grid. Rows have a fixed height so each
+// item can work out where it sits in the viewport without measuring.
+const COLUMNS = 2;
+const COLUMN_GAP = spacing.md;
+const ROW_GAP = spacing.lg;
+const ROW_HEIGHT = FLOAT_ITEM_HEIGHT + ROW_GAP;
+const LIST_TOP = spacing.sm;
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'moneyShot', label: 'Pizza ratings' },
@@ -30,6 +44,18 @@ export default function Activity() {
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { width: windowWidth } = useWindowDimensions();
+  const itemWidth = (windowWidth - spacing.lg * 2 - COLUMN_GAP) / COLUMNS;
+
+  // One scroll position, one viewport height and one gravity reading drive
+  // the tilt of every floating pizza, all on the UI thread.
+  const still = useReducedMotion();
+  const scrollY = useSharedValue(0);
+  const viewportHeight = useSharedValue(600);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.set(e.contentOffset.y);
+  });
+  const gravity = useAnimatedSensor(SensorType.GRAVITY, { interval: 32 });
   const [sortBy, setSortBy] = useState<SortKey>('moneyShot');
   const { data: logs, isLoading } = useRankedLogs(sortBy);
   const { data: profile } = useProfile();
@@ -45,14 +71,6 @@ export default function Activity() {
     }, [])
   );
 
-  const pickSort = (key: SortKey) => {
-    if (key === sortBy) return;
-    if (process.env.EXPO_OS === 'ios') {
-      void Haptics.selectionAsync();
-    }
-    setSortBy(key);
-  };
-
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
       <FadeUp runId={runId}>
@@ -63,33 +81,16 @@ export default function Activity() {
         <StatRow
           runId={runId}
           stats={[
-            {
-              icon: 'fork.knife',
-              value: logs.length,
-              label: logs.length === 1 ? 'Pizza' : 'Pizzas',
-            },
-            {
-              icon: 'star.fill',
-              iconColor: colors.gold,
-              valueColor: colors.gold,
-              value: totalPoints,
-              label: 'Points',
-            },
-            { icon: 'flame.fill', value: streak, label: 'Week streak' },
+            { value: logs.length, label: logs.length === 1 ? 'Pizza' : 'Pizzas' },
+            { valueColor: colors.gold, value: totalPoints, label: 'Points' },
+            { value: streak, label: 'Week streak' },
           ]}
         />
       )}
 
       {logs.length > 0 && (
         <FadeUp runId={runId} delay={380} style={styles.sortRow}>
-          {SORT_OPTIONS.map((opt) => (
-            <StickerChip
-              key={opt.key}
-              label={opt.label}
-              selected={sortBy === opt.key}
-              onPress={() => pickSort(opt.key)}
-            />
-          ))}
+          <TextTabs options={SORT_OPTIONS} value={sortBy} onChange={setSortBy} />
         </FadeUp>
       )}
 
@@ -111,29 +112,40 @@ export default function Activity() {
           />
         </View>
       ) : (
-        <FlatList
-          data={logs}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item, index }) => (
-            // Cap the stagger so a long list does not trickle in forever.
-            <Animated.View
-              entering={FadeInDown.delay(
-                420 + Math.min(index, 6) * 60
-              ).duration(340)}
-            >
-              <PizzaCard
+        <FadeUp runId={runId} delay={420} style={styles.listWrap}>
+          <Animated.FlatList
+            data={logs}
+            keyExtractor={(item) => item.id}
+            numColumns={COLUMNS}
+            onScroll={onScroll}
+            scrollEventThrottle={16}
+            onLayout={(e) => viewportHeight.set(e.nativeEvent.layout.height)}
+            getItemLayout={(_, row) => ({
+              length: ROW_HEIGHT,
+              offset: LIST_TOP + ROW_HEIGHT * row,
+              index: row,
+            })}
+            renderItem={({ item, index }) => (
+              <FloatingPizza
                 log={item}
                 rank={sortBy !== 'date' ? index + 1 : undefined}
+                index={index}
+                width={itemWidth}
+                rowTop={LIST_TOP + Math.floor(index / COLUMNS) * ROW_HEIGHT}
+                scrollY={scrollY}
+                viewportHeight={viewportHeight}
+                gravity={gravity.sensor}
+                still={still}
               />
-            </Animated.View>
-          )}
-          contentContainerStyle={[
-            styles.list,
-            { paddingBottom: insets.bottom + LOG_BUTTON_CLEARANCE },
-          ]}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          showsVerticalScrollIndicator={false}
-        />
+            )}
+            columnWrapperStyle={styles.row}
+            contentContainerStyle={{
+              paddingTop: LIST_TOP,
+              paddingBottom: insets.bottom + LOG_BUTTON_CLEARANCE,
+            }}
+            showsVerticalScrollIndicator={false}
+          />
+        </FadeUp>
       )}
     </View>
   );
@@ -143,24 +155,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-    experimental_backgroundImage: gradients.screen,
     paddingHorizontal: spacing.lg,
   },
   title: {
-    fontSize: fontSize.xl,
-    fontWeight: '800',
-    color: colors.textPrimary,
+    fontFamily: fonts.display,
+    fontSize: 21,
+    lineHeight: 28,
+    textTransform: 'uppercase',
+    color: colors.brand,
     marginBottom: spacing.md,
   },
   sortRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
     marginBottom: spacing.md,
   },
-  list: {
+  listWrap: {
+    flex: 1,
   },
-  separator: {
-    height: spacing.sm,
+  row: {
+    gap: COLUMN_GAP,
+    marginBottom: ROW_GAP,
   },
   empty: {
     flex: 1,

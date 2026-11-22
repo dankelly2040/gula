@@ -9,7 +9,7 @@ import { useDraftLogStore } from '../../state/draft-log';
 import { getZoneForScore } from '../../constants/enums';
 import type { SubScores, PizzaTags } from '../../db/types';
 import { CircleButton } from '../../components/sticker';
-import { colors, spacing, fontSize, radii, sticker, gradients } from '../../constants/theme';
+import { colors, spacing, fontSize } from '../../constants/theme';
 
 export default function PizzaDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -23,7 +23,7 @@ export default function PizzaDetail() {
     return (
       <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
         <Text style={styles.notFound}>Log not found</Text>
-        <Pressable onPress={() => goBack()}>
+        <Pressable accessibilityRole="button" onPress={() => goBack()}>
           <Text style={styles.backLink}>Go back</Text>
         </Pressable>
       </View>
@@ -58,7 +58,7 @@ export default function PizzaDetail() {
 
   const handleShare = async () => {
     const spot = log.spotName ?? 'a mystery spot';
-    const message = `I gave ${spot} a ${log.moneyShot}/100 on the money shot. Verdict: ${zone.label}. 🍕 Logged with Local Pizza`;
+    const message = `I gave ${spot} a ${log.moneyShot}/100 on the money shot. Verdict: ${zone.label}. 🍕 Logged with Pizza Quest`;
     try {
       await Share.share({ message });
     } catch {
@@ -92,17 +92,17 @@ export default function PizzaDetail() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => goBack()}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => goBack()}>
           <Ionicons name="arrow-back" size={28} color={colors.textPrimary} />
         </Pressable>
         <View style={styles.headerActions}>
-          <CircleButton onPress={() => void handleShare()} size={40}>
+          <CircleButton onPress={() => void handleShare()} size={40} label="Share">
             <Ionicons name="share-outline" size={20} color={colors.ink} />
           </CircleButton>
-          <CircleButton onPress={handleEdit} size={40}>
+          <CircleButton onPress={handleEdit} size={40} label="Edit log">
             <Ionicons name="pencil-outline" size={20} color={colors.ink} />
           </CircleButton>
-          <CircleButton onPress={handleDelete} size={40}>
+          <CircleButton onPress={handleDelete} size={40} label="Delete log">
             <Ionicons name="trash-outline" size={20} color={colors.danger} />
           </CircleButton>
         </View>
@@ -227,7 +227,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-    experimental_backgroundImage: gradients.screen,
   },
   header: {
     flexDirection: 'row',
@@ -263,19 +262,13 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: spacing.lg,
   },
-  // Mustard sticker frame, echoing the capture card.
+  // The rating stands on the page by itself: no block behind it.
   moneyShot: {
-    backgroundColor: colors.frame,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
     marginBottom: spacing.lg,
-    ...sticker.border,
-    ...sticker.shadow,
   },
   moneyShotLabel: {
     fontSize: fontSize.sm,
-    // Ink holds contrast on the mustard frame.
-    color: colors.ink,
+    color: colors.textSecondary,
     fontWeight: '600',
     marginBottom: spacing.xs,
   },

@@ -1,29 +1,29 @@
-// Pizza Quest "faded pizzeria menu" palette (October 2026).
-// Pale parchment ground, warm charcoal ink, faded tomato as the ONLY
-// interactive color. Gold is reserved for points; danger for destructive
+// Pizza Quest palette (November 2026): a pizza-shop sign.
+// Pure white ground, near-black ink, brushed-steel neutrals, and one deep
+// signal red as the ONLY interactive color. Gold is reserved for points; danger for destructive
 // actions. Kingdom fills are the four map tints and nothing else.
 export const colors = {
   // Brand (the one color that means "tap me")
-  brand: '#D96C5A',
-  brandDark: '#B95443',
-  brandLight: '#E8897A',
+  brand: '#C8102E',
+  brandDark: '#A00D25',
+  brandLight: '#E0465C',
 
-  // Backgrounds (parchment)
-  bg: '#F7F1E3',
-  bgCard: '#FFFBF2',
-  bgElevated: '#EFE6D2',
-  bgInput: '#F3ECDB',
+  // Backgrounds (white ground, neutral grays for raised and input surfaces)
+  bg: '#FFFFFF',
+  bgCard: '#FFFFFF',
+  bgElevated: '#F1F2F3',
+  bgInput: '#F5F6F7',
 
-  // Text (warm charcoal)
-  textPrimary: '#4A3F35',
-  textSecondary: '#8A7B6B',
-  textMuted: '#AFA290',
+  // Text (near-black, cool greys)
+  textPrimary: '#1F1B1B',
+  textSecondary: '#6B6767',
+  textMuted: '#A29E9E',
 
   // Reserved accents
   gold: '#B8923E', // points only
 
   // Score zones (Vom to Nirvana): one monotonic ramp, faded so it sits on
-  // parchment without shouting.
+  // white without shouting.
   zoneVom: '#C0564A',
   zoneRegret: '#D4826A',
   zoneFine: '#DDA86B',
@@ -38,15 +38,28 @@ export const colors = {
   kingdomMustard: '#EAD48C',
 
   // Utility
-  border: '#E3D8C3',
-  overlay: 'rgba(74, 63, 53, 0.4)',
+  border: '#E2E3E5',
+  overlay: 'rgba(20, 17, 17, 0.4)',
   danger: '#C25B4D',
   success: '#7FA56F',
 
   // Sticker language, softened: thin ink lines, low shadows
-  ink: '#4A3F35', // outlines
+  ink: '#1F1B1B', // outlines
   frame: '#E6CF96', // pale mustard card frames
-  surface: '#FFFBF2', // button/card fill
+  surface: '#FFFFFF', // button/card fill
+  viewportDark: '#1B1610', // camera viewport behind the live preview
+} as const;
+
+// Illustration palette: the splash slice, the reward confetti, the confetti
+// dots on the capture card. Food colors stay saturated on purpose; they are
+// art, not UI chrome, so they sit outside the neutral ramp.
+export const illustration = {
+  crust: '#B84508',
+  crustLight: '#D9530E',
+  cheese: '#F6C445',
+  cheesePale: '#F1E599',
+  pepperoni: '#C43C24',
+  basil: '#75A24E',
 } as const;
 
 export const KINGDOM_FILLS = [
@@ -56,52 +69,65 @@ export const KINGDOM_FILLS = [
   colors.kingdomMustard,
 ] as const;
 
-// Sticker treatment, now a printed-card feel: 1px ink line, 1px to 3px
-// offset shadows at low opacity. Applies to custom RN surfaces only; native
-// surfaces (@expo/ui forms, pickers, sheets, the tab bar) stay native.
+// Shapes. One language for the whole app:
+//
+//   - Nothing has an outline, and nothing has a hard offset shadow.
+//   - Buttons are solid rounded rectangles (`shape.button`). Icon-only
+//     buttons are solid circles.
+//   - Tabs are words: the chosen one is red with a red rule under it
+//     (components/text-tabs).
+//   - Containers are not drawn. Content sits on the white page, grouped by
+//     space and hairlines. A grey block (`colors.bgElevated`, `shape.block`)
+//     is for the rare thing that needs a surface of its own.
+//   - Only things that float over other content (the log button, a panel on
+//     the map, a modal) get a soft shadow: `lift`.
+//
+// Native surfaces (@expo/ui forms, pickers, sheets, the tab bar) stay native.
+const INK_RGB = '31, 27, 27';
+
+/** Corner radii by role. */
+export const shape = {
+  button: 14,
+  chip: 10,
+  block: 16,
+  panel: 22,
+} as const;
+
+/** The one shadow, for things that float over other content. */
+export const lift = {
+  boxShadow: `0 8px 24px rgba(${INK_RGB}, 0.18)`,
+} as const;
+
+// `sticker` was the old outlined, hard-shadowed card style. The tokens stay
+// so that every surface built on them changed at once, but they now draw
+// nothing. New code should not reach for them: use `shape` and `lift`.
 export const sticker = {
   border: {
-    borderWidth: 1,
-    borderColor: colors.ink,
+    borderWidth: 0,
+    borderColor: 'transparent',
   },
-  shadow: {
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.14,
-    shadowRadius: 0,
-    elevation: 3,
-  },
-  shadowSm: {
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 0,
-    elevation: 2,
-  },
-  shadowLg: {
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.16,
-    shadowRadius: 0,
-    elevation: 4,
-  },
+  shadow: { boxShadow: [] },
+  shadowSm: { boxShadow: [] },
+  shadowLg: { boxShadow: [] },
+  shadowNone: { boxShadow: [] },
+  // Press feedback: a slight squeeze and dim, in place of the old push-down.
   pressed: {
-    transform: [{ translateY: 1 }],
-    shadowOffset: { width: 0, height: 1 },
+    opacity: 0.86,
+    transform: [{ scale: 0.98 }],
   },
 } as const;
 
-// Screen wash: paler parchment at the top, a touch deeper at the bottom,
-// with a faint mustard bloom in the upper right so the ground is not one
-// flat sheet.
-//
-// CSS gradients need the New Architecture. Gula is Fabric-only, so this is
-// safe; do not swap in expo-linear-gradient.
-export const gradients = {
-  screen: [
-    'radial-gradient(ellipse 110% 70% at 85% 0%, rgba(230, 207, 150, 0.35) 0%, rgba(230, 207, 150, 0) 62%)',
-    'linear-gradient(to bottom, #FBF7EC 0%, #F7F1E3 42%, #F0E7D2 100%)',
-  ].join(', '),
+/** The ink color as RGB parts, for building shadows and tints in worklets. */
+export const STICKER_SHADOW_RGB = INK_RGB;
+
+// Sign lettering: a heavy geometric grotesque, set in capitals, like the
+// fascia of a pizza shop. `display` is for headlines and big numbers,
+// `label` for buttons and small capitals. Loaded in the root layout. Each
+// name is one face, so never combine them with fontWeight. Body copy stays
+// on the system font.
+export const fonts = {
+  display: 'Montserrat_900Black',
+  label: 'Montserrat_800ExtraBold',
 } as const;
 
 export const spacing = {

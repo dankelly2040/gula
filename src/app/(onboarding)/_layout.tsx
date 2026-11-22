@@ -1,12 +1,7 @@
 import { Stack } from 'expo-router';
 import { colors } from '../../constants/theme';
 
-// Without an index route in this group, the router would otherwise land on
-// the alphabetically first screen (intro). Welcome is the entry point.
-export const unstable_settings = {
-  initialRouteName: 'welcome',
-};
-
+// One screen: the first-run pager (index).
 export default function OnboardingLayout() {
   return (
     <Stack

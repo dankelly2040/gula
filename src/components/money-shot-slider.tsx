@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { MONEY_SHOT_ZONES, getZoneForScore } from '../constants/enums';
-import { colors, spacing, fontSize, radii, sticker } from '../constants/theme';
+import { colors, fonts, spacing, fontSize, STICKER_SHADOW_RGB } from '../constants/theme';
 
 type Props = {
   value: number;
@@ -90,7 +90,7 @@ export function MoneyShotSlider({ value, onChange }: Props) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.label}>Rate this pizza</Text>
-        <View style={[styles.scoreBadge, { backgroundColor: zone.color + '30' }]}>
+        <View style={styles.scoreBadge}>
           <Text style={[styles.scoreText, { color: zone.color }]}>{value}</Text>
           <Text style={[styles.zoneText, { color: zone.color }]}>{zone.label}</Text>
         </View>
@@ -142,21 +142,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
   },
+  // The score as a plain figure in its zone color, with no pill behind it.
   scoreBadge: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radii.full,
+    alignItems: 'baseline',
+    gap: 6,
   },
   scoreText: {
+    fontFamily: fonts.display,
     fontSize: fontSize.xl,
-    fontWeight: '800',
   },
   zoneText: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontFamily: fonts.label,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
   trackContainer: {
     height: THUMB_SIZE + 20,
@@ -186,10 +186,10 @@ const styles = StyleSheet.create({
     width: THUMB_SIZE,
     height: THUMB_SIZE,
     borderRadius: THUMB_SIZE / 2,
-    // Ink ring plus hard offset shadow keeps the thumb in the sticker language.
-    borderWidth: 2,
-    borderColor: colors.ink,
-    ...sticker.shadowSm,
+    // A white ring and a soft shadow lift the thumb off the color track.
+    borderWidth: 3,
+    borderColor: colors.surface,
+    boxShadow: `0 2px 8px rgba(${STICKER_SHADOW_RGB}, 0.28)`,
   },
   zoneLabels: {
     flexDirection: 'row',
