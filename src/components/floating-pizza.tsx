@@ -8,7 +8,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import Svg, { Path } from 'react-native-svg';
 import { SliceArt } from './onboarding-art';
 import { cutoutUriFor } from '../lib/cutouts';
 import { getZoneForScore } from '../constants/enums';
@@ -28,7 +27,8 @@ import type { PizzaLog } from '../db/types';
 //
 // The look follows an editorial slice chart: real slices cut out on a clean
 // ground, a soft shadow in each slice's own shape, and a small uppercase
-// label on a curved leader line.
+// label. The chart's curved leader line was tried here and taken out: under
+// a pizza that is already centered over its name it pointed at nothing.
 //
 // What floats, best first:
 //   1. the cutout lifted from the photo (the pizza itself, on transparency),
@@ -260,16 +260,6 @@ export function FloatingPizza({
             <Text style={styles.name} numberOfLines={1}>
               {name}
             </Text>
-            {/* Leader line: from the label up toward the slice. */}
-            <Svg width={22} height={30} viewBox="0 0 22 30" style={styles.leader}>
-              <Path
-                d="M1 25 C9 29 18 24 20 3"
-                stroke={colors.ink}
-                strokeWidth={1.3}
-                strokeLinecap="round"
-                fill="none"
-              />
-            </Svg>
           </View>
           <View style={styles.scoreRow}>
             <Text style={[styles.score, { color: zone.color }]}>{log.moneyShot}</Text>
@@ -372,15 +362,12 @@ const styles = StyleSheet.create({
   rankTextFirst: {
     color: colors.surface,
   },
-  // The row is 22 tall; the leader is taller and bottom-aligned, so it
-  // rises out of the row toward the slice.
   labelRow: {
     height: 22,
     maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'center',
-    paddingLeft: 12, // offsets part of the leader so the name sits near center
   },
   name: {
     flexShrink: 1,
@@ -390,10 +377,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     textTransform: 'uppercase',
     color: colors.textPrimary,
-  },
-  leader: {
-    marginLeft: 2,
-    marginBottom: 2,
   },
   scoreRow: {
     height: 30,

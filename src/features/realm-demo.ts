@@ -9,19 +9,22 @@ import { PLACES, type Eaten } from './realm';
 // before this ships.
 //
 // The rival "eats" at real places from the shipped list, so the heat lands on
-// real streets. Each entry is [kingdom id, visits per place, points per visit].
+// real streets. Each entry is [Seattle district id, visits per place, points
+// per visit]. A plan is written by district because that is how the shipped
+// places are grouped; the points still land in whatever kingdoms (grid cells)
+// those places are in.
 
-type Plan = [kingdomId: string, visitsPerPlace: number[], pointsPerVisit: number][];
+type Plan = [districtId: string, visitsPerPlace: number[], pointsPerVisit: number][];
 
 /**
  * Turn a plan into logged pizzas. Places are taken in id order from the
- * independent shops in each kingdom, starting at `skip`, so two plans with
+ * independent shops in each district, starting at `skip`, so two plans with
  * different skips never use the same place.
  */
 function eat(plan: Plan, skip: number): Eaten[] {
   const eaten: Eaten[] = [];
-  for (const [kingdomId, visitsPerPlace, points] of plan) {
-    const shops = PLACES.filter((p) => p.kingdomId === kingdomId && p.brand === null).sort(
+  for (const [districtId, visitsPerPlace, points] of plan) {
+    const shops = PLACES.filter((p) => p.kingdomId === districtId && p.brand === null).sort(
       (a, b) => a.id.localeCompare(b.id)
     );
     visitsPerPlace.forEach((visits, i) => {
@@ -50,8 +53,7 @@ export const DEMO_RIVAL = {
 
 /**
  * A stand-in for the player, shown only in development builds when none of
- * their own pizzas were logged inside the realm (the simulator's location is
- * not Seattle). Never used in a release build.
+ * their own pizzas has a location. Never used in a release build.
  */
 export const DEMO_SELF_EATEN: Eaten[] = eat(
   [

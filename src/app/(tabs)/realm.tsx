@@ -1,26 +1,41 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { useObserve } from 'expo-observe';
 import { usePizzaLogs } from '@/hooks/use-pizza-logs';
+import { usePizzaPlaces } from '@/hooks/use-discover';
+import {
+  MY_COORDS_KEY,
+  coordinateName,
+  useCityName,
+  useKingdomName,
+  useMyCoords,
+} from '@/hooks/use-realm-names';
+import { useCity } from '@/hooks/use-city';
+import { CITY_CREDIT } from '@/lib/city-tiles';
+import { getCurrentCoords, type Coords } from '@/lib/location';
 import { useDraftLogStore } from '@/state/draft-log';
 import { FadeUp } from '@/components/fade-up';
-import { RealmMap, type RealmSelection } from '@/components/realm-map';
-import { PillButton } from '@/components/sticker';
+import { CITY_OVERDRAW, RealmMap, type RealmSelection } from '@/components/realm-map';
+import { CircleButton, PillButton } from '@/components/sticker';
 import { LOG_BUTTON_CLEARANCE } from '@/components/log-button';
 import { colors, fonts, fontSize, spacing, STICKER_SHADOW_RGB } from '@/constants/theme';
+import { cellGroundRadius, growBounds } from '@/features/grid';
 import {
-  KINGDOMS,
-  PLACES,
-  kingdomById,
+  districtById,
+  homeRegion,
   kingdomForPoint,
   kingdomLeader,
   kingdomsLed,
   placesInKingdom,
   pointsByKingdom,
+  regionAround,
+  withinBounds,
   type Eaten,
   type Kingdom,
   type Leader,
@@ -30,15 +45,18 @@ import { DEMO_RIVAL, DEMO_SELF_EATEN } from '@/features/realm-demo';
 
 // The screen follows My Pizza: a white page, a red headline in sign
 // capitals, plain figures, and no boxes. The map under the header is drawn
-// by the app (components/realm-map): the land as a thin red outline, a finer
-// red line for each kingdom border, and nothing else until the user moves
-// in. What it shows is heat. Every pizza eaten is a soft glow where it was
+// by the app (components/realm-map): the real city in the app's own look,
+// with the shore as a thin red line, streets in quiet grey and place names.
+// It opens on the city of the player's latest pizza. What it shows is heat. Every pizza eaten is a soft glow where it was
 // eaten, sized by the points it earned, so points piling up in a
 // neighborhood read as a hot spot. Red is you. Charcoal is the rival.
 
 // Roughly what the detail panel covers at the bottom of the map, so a
 // selection is centered in the part that stays open.
 const PANEL_COVER = 250;
+
+
+const NO_PIZZA: Eaten[] = [];
 
 /** Matches a logged pizza to a place on the list. About 11 meters of slack. */
 function spotKey(at: { lat: number; lng: number }): string {
@@ -55,28 +73,64 @@ export default function Realm() {
   const router = useRouter();
   const [selection, setSelection] = useState<RealmSelection>(null);
 
+  // Where the phone is. Read on every visit to the tab, and only when the
+  // user has already allowed location; the locate button is what asks.
+  const queryClient = useQueryClient();
+  const { data: me = null, refetch: findMe } = useMyCoords();
+  // Where the user has taken the map: set when they drag it away from its
+  // region, and by the locate button when they are outside it.
+  const [around, setAround] = useState<Coords | null>(null);
+
   // Bumped on every visit to the tab so the header replays its landing.
   const [runId, setRunId] = useState(0);
   useFocusEffect(
     useCallback(() => {
       setRunId((n) => n + 1);
-    }, [])
+      void findMe();
+    }, [findMe])
   );
 
-  // Your pizzas come from your own logs. The rival is invented for now (see
-  // features/realm-demo). A development build falls back to a sample for
-  // you when none of your logs are inside the realm, which is always the
-  // case on a simulator, so the heat can still be judged there.
+  // Your pizzas come from your own logs: every one that has a location, in
+  // any city. A development build falls back to a sample for you when none
+  // of your logs has a location, so the heat can still be judged there.
   const { data: logs } = usePizzaLogs();
-  const { yourEaten, usingSample } = useMemo(() => {
-    const real: Eaten[] = (logs ?? [])
-      .filter((log) => log.lat != null && log.lng != null)
-      .map((log) => ({ lat: log.lat!, lng: log.lng!, points: log.pointsEarned }));
-    const inRealm = real.filter((e) => kingdomForPoint(e.lat, e.lng) !== null);
-    if (inRealm.length === 0 && __DEV__) return { yourEaten: DEMO_SELF_EATEN, usingSample: true };
-    return { yourEaten: inRealm, usingSample: false };
+  const { yourEaten, latest, usingSample } = useMemo(() => {
+    const located = (logs ?? []).filter((log) => log.lat != null && log.lng != null);
+    if (located.length === 0) {
+      return __DEV__
+        ? { yourEaten: DEMO_SELF_EATEN, latest: DEMO_SELF_EATEN[0], usingSample: true }
+        : { yourEaten: NO_PIZZA, latest: null, usingSample: false };
+    }
+    const newest = located.reduce((a, b) => (a.timestamp >= b.timestamp ? a : b));
+    return {
+      yourEaten: located.map((log) => ({
+        lat: log.lat!,
+        lng: log.lng!,
+        points: log.pointsEarned,
+      })),
+      latest: { lat: newest.lat!, lng: newest.lng! },
+      usingSample: false,
+    };
   }, [logs]);
-  const rivalEaten = DEMO_RIVAL.eaten;
+
+  // The map opens where you are, when location is allowed, framed on the
+  // pizzas you have eaten around there. Without location it opens on the city
+  // of your latest pizza, and with no located pizza either, on Seattle. The
+  // sample data is in Seattle, so a sample map stays there.
+  const region = useMemo(() => {
+    if (around) return regionAround(around.lat, around.lng);
+    return homeRegion(yourEaten, usingSample ? latest : (me ?? latest));
+  }, [around, yourEaten, latest, me, usingSample]);
+  const city = useCityName(region);
+
+  // The rival is invented for now (see features/realm-demo) and eats only in
+  // Seattle. A player whose map is another city has no rival yet, so the
+  // screen shows none there.
+  const rivalHere = useMemo(
+    () => DEMO_RIVAL.eaten.some((e) => withinBounds(region, e.lat, e.lng)),
+    [region]
+  );
+  const rivalEaten = rivalHere ? DEMO_RIVAL.eaten : NO_PIZZA;
 
   // Where each player has eaten, so the places list can mark those spots.
   const yourSpots = useMemo(() => new Set(yourEaten.map(spotKey)), [yourEaten]);
@@ -88,9 +142,37 @@ export default function Realm() {
   const sum = (totals: Record<string, number>) =>
     Object.values(totals).reduce((a, b) => a + b, 0);
 
+  // Every point on the map is in a kingdom, so a tap always names one. A
+  // second tap on the open kingdom closes it.
+  // The real city for the region, and a little past it, since the map can
+  // be dragged a little past it.
+  const cityBounds = useMemo(() => growBounds(region, CITY_OVERDRAW), [region]);
+  const { data: cityData = null } = useCity(cityBounds);
+
+  // The locate button: find the phone, asking for permission if it has to,
+  // bring that place onto the map, and open the kingdom the user is in.
+  const locate = useCallback(async () => {
+    if (process.env.EXPO_OS === 'ios') void Haptics.selectionAsync();
+    const coords = await getCurrentCoords();
+    if (!coords) {
+      Alert.alert(
+        'Location is off',
+        'Allow location for Pizza Quest in Settings to see where you are on the map.'
+      );
+      return;
+    }
+    queryClient.setQueryData(MY_COORDS_KEY, coords);
+    if (!withinBounds(region, coords.lat, coords.lng)) setAround(coords);
+    setSelection({ kind: 'kingdom', kingdom: kingdomForPoint(coords.lat, coords.lng) });
+  }, [queryClient, region]);
+
   const select = useCallback((next: RealmSelection) => {
     if (next && process.env.EXPO_OS === 'ios') void Haptics.selectionAsync();
-    setSelection(next);
+    setSelection((open) =>
+      next?.kind === 'kingdom' && open?.kind === 'kingdom' && open.kingdom.id === next.kingdom.id
+        ? null
+        : next
+    );
   }, []);
 
   const startLogAt = (place: Place) => {
@@ -105,10 +187,7 @@ export default function Realm() {
     return (
       <View style={[styles.fallback, { paddingTop: insets.top + spacing.lg }]}>
         <Text style={styles.title}>The realm.</Text>
-        <Text style={styles.fallbackText}>
-          The kingdom map is not on the web yet. {KINGDOMS.length} kingdoms, {PLACES.length} pizza
-          places.
-        </Text>
+        <Text style={styles.fallbackText}>The kingdom map is not on the web yet.</Text>
       </View>
     );
   }
@@ -119,7 +198,10 @@ export default function Realm() {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <FadeUp runId={runId}>
-          <Text style={styles.title}>The realm.</Text>
+          {/* The city the map shows, so the grid is never without a place. */}
+          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+            {city ? `The realm of ${city}.` : 'The realm.'}
+          </Text>
         </FadeUp>
         <FadeUp runId={runId} delay={120} style={styles.versus}>
           <Side
@@ -129,30 +211,49 @@ export default function Realm() {
             kingdoms={led.you}
             pointsColor={colors.brand}
           />
-          <Side
-            name={DEMO_RIVAL.name}
-            dot={colors.ink}
-            points={sum(rivalPoints)}
-            kingdoms={led.rival}
-            pointsColor={colors.textPrimary}
-          />
+          {rivalHere ? (
+            <Side
+              name={DEMO_RIVAL.name}
+              dot={colors.ink}
+              points={sum(rivalPoints)}
+              kingdoms={led.rival}
+              pointsColor={colors.textPrimary}
+            />
+          ) : null}
         </FadeUp>
         {usingSample ? (
           <Text style={styles.sampleNote}>
-            Sample heat for you. Your logged pizzas are outside Seattle.
+            Sample heat for you. None of your pizzas has a location yet.
           </Text>
         ) : null}
       </View>
 
       <View style={styles.mapWrap}>
         <RealmMap
+          region={region}
+          me={me}
+          city={cityData}
           yourEaten={yourEaten}
           rivalEaten={rivalEaten}
           selection={selection}
           onSelect={select}
+          onMove={setAround}
           restBottom={restBottom}
           panelBottom={restBottom + PANEL_COVER}
         />
+
+        {/* The city's data is OpenStreetMap's, and its license asks for this line. */}
+        {cityData ? (
+          <Text style={styles.credit} pointerEvents="none">
+            {CITY_CREDIT}
+          </Text>
+        ) : null}
+
+        <View style={styles.locate}>
+          <CircleButton onPress={locate} label="Show where I am" size={44}>
+            <Ionicons name="navigate" size={19} color={colors.ink} />
+          </CircleButton>
+        </View>
 
         {selection ? (
           <Animated.View
@@ -168,6 +269,7 @@ export default function Realm() {
                 yours={yourPoints[selection.kingdom.id] ?? 0}
                 theirs={rivalPoints[selection.kingdom.id] ?? 0}
                 leader={kingdomLeader(selection.kingdom.id, yourPoints, rivalPoints)}
+                showRival={rivalHere}
                 yourSpots={yourSpots}
                 rivalSpots={rivalSpots}
                 onSelectPlace={(place) => select({ kind: 'place', place })}
@@ -228,6 +330,7 @@ function KingdomPanel({
   yours,
   theirs,
   leader,
+  showRival,
   yourSpots,
   rivalSpots,
   onSelectPlace,
@@ -236,23 +339,54 @@ function KingdomPanel({
   yours: number;
   theirs: number;
   leader: Leader;
+  showRival: boolean;
   yourSpots: Set<string>;
   rivalSpots: Set<string>;
   onSelectPlace: (place: Place) => void;
 }) {
   const [showPlaces, setShowPlaces] = useState(false);
-  const places = useMemo(
-    () => [...placesInKingdom(kingdom.id)].sort((a, b) => a.name.localeCompare(b.name)),
-    [kingdom.id]
+  const name = useKingdomName(kingdom);
+
+  // Seattle's places ship with the app. For a kingdom with none on that
+  // list, which is every kingdom in another city, the panel asks the phone's
+  // map search for the pizza places around the middle of the kingdom and
+  // keeps the ones inside it. Those are shown and never stored.
+  const shipped = placesInKingdom(kingdom.id);
+  const [lat, lng] = kingdom.center;
+  const { data: found } = usePizzaPlaces(
+    shipped.length === 0 ? { lat, lng, radiusMeters: Math.round(cellGroundRadius(lat)) } : null
   );
+  const places = useMemo(() => {
+    const list: Place[] =
+      shipped.length > 0
+        ? shipped
+        : (found ?? [])
+            .filter((p) => kingdomForPoint(p.lat, p.lng).id === kingdom.id)
+            .map((p) => ({
+              id: `found:${p.name}:${p.lat},${p.lng}`,
+              name: p.name,
+              lat: p.lat,
+              lng: p.lng,
+              address: p.address,
+              brand: null,
+              tier: 2,
+              kingdomId: null,
+            }));
+    return [...list].sort((a, b) => a.name.localeCompare(b.name));
+  }, [shipped, found, kingdom.id]);
 
   return (
     <View style={styles.panel}>
       <Text style={styles.kicker}>Kingdom · {leader ? LEADER_LINE[leader] : 'Unclaimed'}</Text>
-      <Text style={styles.panelTitle}>{kingdom.name}</Text>
+      {/* The name can take a moment to arrive; the line keeps its height. */}
+      <Text style={styles.panelTitle} numberOfLines={1}>
+        {name === undefined ? ' ' : (name ?? coordinateName(kingdom.center))}
+      </Text>
       <View style={styles.figureRow}>
         <Figure value={yours} label="You" color={colors.brand} />
-        <Figure value={theirs} label={DEMO_RIVAL.name} color={colors.textPrimary} />
+        {showRival ? (
+          <Figure value={theirs} label={DEMO_RIVAL.name} color={colors.textPrimary} />
+        ) : null}
         {/* The one figure that opens: the places in this kingdom. */}
         <Pressable
           accessibilityRole="button"
@@ -313,10 +447,10 @@ function KingdomPanel({
 }
 
 function PlacePanel({ place, onLog }: { place: Place; onLog: () => void }) {
-  const kingdom = kingdomById(place.kingdomId);
+  const district = districtById(place.kingdomId);
   return (
     <View style={styles.panel}>
-      <Text style={styles.kicker}>Pizza place{kingdom ? ` · ${kingdom.name}` : ''}</Text>
+      <Text style={styles.kicker}>Pizza place{district ? ` · ${district.name}` : ''}</Text>
       <Text style={styles.panelTitle} numberOfLines={2}>
         {place.name}
       </Text>
@@ -412,6 +546,24 @@ const styles = StyleSheet.create({
   },
   mapWrap: {
     flex: 1,
+  },
+  // On a white backing, so a place name under it does not make it unreadable.
+  credit: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.md,
+    fontSize: 8.5,
+    color: colors.textSecondary,
+    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  locate: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.lg,
   },
   sheet: {
     position: 'absolute',

@@ -27,10 +27,13 @@ import {
 import { scheduleOnRN } from 'react-native-worklets';
 import linesJson from '@/data/realm-lines.json';
 import { colors } from '@/constants/theme';
+import type { City, CityPlace, Line } from '@/features/city';
+import { cellCorners, growBounds, type Bounds, type LatLng } from '@/features/grid';
 import {
-  KINGDOMS,
-  LATE_LABEL_KINGDOMS,
+  DISTRICTS,
+  LATE_LABEL_DISTRICTS,
   PLACES,
+  SEATTLE,
   heatSources,
   kingdomForPoint,
   type Eaten,
@@ -39,15 +42,23 @@ import {
 } from '@/features/realm';
 
 // The Realm map, drawn by the app instead of a map service, so nothing is on
-// it that was not put there: a white page, the land as one thin red outline,
-// a finer red line along every border between kingdoms, and heat.
+// it that was not put there. It shows the real city: water in the faintest
+// grey with the shore as a thin red line, streets as quiet grey lines, and
+// place names. The city comes from OpenStreetMap tiles (features/city), read
+// as plain coordinates and drawn here in the app's own look. Heat goes on
+// top. Kingdoms are cells of the world grid, but the grid itself is not
+// drawn: only the kingdom the user opens shows its shape.
 //
-// Everything is drawn once into paths in "base" coordinates (the whole city
+// Until the city has loaded, or when it cannot be loaded, the map falls back
+// to what ships with the app: Seattle's outline and district names.
+//
+// Everything is drawn once into paths in "base" coordinates (the region
 // fitted to the view). Moving and zooming only changes one transform on the
 // UI thread, and line widths are divided by the zoom so they stay the same
 // thickness on screen.
 
-type LatLng = [number, number];
+// The district borders in the file are not drawn since the grid: a district
+// is no longer a kingdom.
 const LINES = linesJson as { outline: LatLng[][]; borders: LatLng[][] };
 
 export type RealmSelection =
@@ -55,11 +66,25 @@ export type RealmSelection =
   | { kind: 'place'; place: Place }
   | null;
 
+/** A name to write on the map, at a coordinate. */
 type Props = {
+  /** The part of the world the map is fitted to. See homeRegion in features/realm. */
+  region: Bounds;
+  /** Where the phone is, when the user has allowed location. */
+  me: { lat: number; lng: number } | null;
+  /** The real city for this region, once it has loaded. */
+  city: City | null;
   yourEaten: Eaten[];
   rivalEaten: Eaten[];
   selection: RealmSelection;
   onSelect: (next: RealmSelection) => void;
+  /**
+   * Called when the user has dragged the map well away from the middle of
+   * its region. The owner answers with a region around this coordinate, and
+   * the map keeps the same view over it, so the drag can go on to the next
+   * part of the world.
+   */
+  onMove: (center: { lat: number; lng: number }) => void;
   /** Space at the bottom that other UI always covers (tab bar, log button). */
   restBottom: number;
   /** Space at the bottom the detail panel covers while something is selected. */
@@ -68,13 +93,15 @@ type Props = {
 
 // --- Line weights, in screen points -------------------------------------------
 const OUTLINE_WIDTH = 1.4;
-const BORDER_WIDTH = 0.6;
+const SHORE_WIDTH = 1.2;
+const MAJOR_ROAD_WIDTH = 0.9;
+const MINOR_ROAD_WIDTH = 0.5;
 const FOCUS_WIDTH = 2;
 
 // --- Zoom ---------------------------------------------------------------------
 const MIN_SCALE = 1;
 const MAX_SCALE = 16;
-const LABELS_FROM = 1.45; // kingdom names fade in as the user moves in
+const LABELS_FROM = 1.45; // district names fade in as the user moves in
 const LATE_LABELS_FROM = 2.6; // the six in the crowded middle wait longer
 const PLACES_FROM = 3.4; // pizza places appear closer still
 const PLACE_TAP_REACH = 18; // screen points
@@ -90,6 +117,11 @@ const HEAT_ZOOM_GROWTH = 0.55;
 
 const YOU_RGB = '200, 16, 46'; // colors.brand
 const RIVAL_RGB = '31, 27, 27'; // colors.ink
+// The city is the ground the heat sits on, so it stays quiet: no blue, water
+// one step off white, streets in thin ink. Only the shore is red.
+const WATER_COLOR = '#F2F3F5';
+const MAJOR_ROAD_COLOR = `rgba(${RIVAL_RGB}, 0.26)`;
+const MINOR_ROAD_COLOR = `rgba(${RIVAL_RGB}, 0.13)`;
 
 const EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
 
@@ -97,37 +129,111 @@ const EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
 // At city scale a plain "degrees times cos(latitude)" projection is exact
 // enough, and it is trivially reversible for taps.
 
-const ALL_POINTS = LINES.outline.flat();
-const MIN_LAT = Math.min(...ALL_POINTS.map((p) => p[0]));
-const MAX_LAT = Math.max(...ALL_POINTS.map((p) => p[0]));
-const MIN_LNG = Math.min(...ALL_POINTS.map((p) => p[1]));
-const MAX_LNG = Math.max(...ALL_POINTS.map((p) => p[1]));
-const LNG_SQUASH = Math.cos((((MIN_LAT + MAX_LAT) / 2) * Math.PI) / 180);
-const WORLD_WIDTH = (MAX_LNG - MIN_LNG) * LNG_SQUASH;
-const WORLD_HEIGHT = MAX_LAT - MIN_LAT;
+// The map can be dragged this far past the region, as a share of its size,
+// so the city is loaded and drawn that far out as well.
+export const CITY_OVERDRAW = 0.35;
+// When the view comes to rest this far from the middle of the region, as a
+// share of the region's size, the map asks for a region around the view. It
+// is less than CITY_OVERDRAW, so the ask always comes before the hard stop.
+const MOVE_AFTER = 0.2;
+
+// Place names arrive in three steps as the user moves in. Each step only
+// takes the names that have room at that zoom.
+const NAME_STEPS: (number | undefined)[] = [undefined, 2.2, 4.5];
 
 type Projection = {
   toBase: (lat: number, lng: number) => { x: number; y: number };
   toLatLng: (x: number, y: number) => { lat: number; lng: number };
 };
 
-function fit(width: number, height: number, restBottom: number): Projection {
+function fit(width: number, height: number, restBottom: number, region: Bounds): Projection {
+  const squash = Math.cos((((region.minLat + region.maxLat) / 2) * Math.PI) / 180);
+  const worldWidth = (region.maxLng - region.minLng) * squash;
+  const worldHeight = region.maxLat - region.minLat;
   const padX = 22;
   const padTop = 18;
   const usableHeight = height - padTop - restBottom - 12;
-  const k = Math.min((width - padX * 2) / WORLD_WIDTH, usableHeight / WORLD_HEIGHT);
-  const left = (width - WORLD_WIDTH * k) / 2;
-  const top = padTop + (usableHeight - WORLD_HEIGHT * k) / 2;
+  const k = Math.min((width - padX * 2) / worldWidth, usableHeight / worldHeight);
+  const left = (width - worldWidth * k) / 2;
+  const top = padTop + (usableHeight - worldHeight * k) / 2;
   return {
     toBase: (lat, lng) => ({
-      x: left + (lng - MIN_LNG) * LNG_SQUASH * k,
-      y: top + (MAX_LAT - lat) * k,
+      x: left + (lng - region.minLng) * squash * k,
+      y: top + (region.maxLat - lat) * k,
     }),
     toLatLng: (x, y) => ({
-      lat: MAX_LAT - (y - top) / k,
-      lng: MIN_LNG + (x - left) / (LNG_SQUASH * k),
+      lat: region.maxLat - (y - top) / k,
+      lng: region.minLng + (x - left) / (squash * k),
     }),
   };
+}
+
+function overlaps(a: Bounds, b: Bounds): boolean {
+  return (
+    a.minLat <= b.maxLat && a.maxLat >= b.minLat && a.minLng <= b.maxLng && a.maxLng >= b.minLng
+  );
+}
+
+/** Lines given as [lat, lng, lat, lng, ...] as one path. */
+function cityPath(lines: Line[], project: Projection, close: boolean) {
+  const builder = Skia.PathBuilder.Make();
+  for (const line of lines) {
+    for (let i = 0; i < line.length; i += 2) {
+      const { x, y } = project.toBase(line[i], line[i + 1]);
+      if (i === 0) builder.moveTo(x, y);
+      else builder.lineTo(x, y);
+    }
+    if (close) builder.close();
+  }
+  return builder.detach();
+}
+
+type NameLabel = { id: string; text: string; x: number; y: number; from?: number };
+
+const KIND_ORDER: Record<CityPlace['kind'], number> = { city: 0, suburb: 1, town: 1 };
+
+/**
+ * Chooses which place names to write and when. The most important names go
+ * first; a name is only taken at a step if, at that step's zoom, it does not
+ * touch a name already taken.
+ */
+function placeNames(
+  places: CityPlace[],
+  project: Projection,
+  font: SkFont,
+  /** A point the names must stay clear of: the user's own mark and its word. */
+  keepClear: { x: number; y: number } | null
+): NameLabel[] {
+  const ordered = [...places].sort(
+    (a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.rank - b.rank || a.name.localeCompare(b.name)
+  );
+  const waiting = ordered.map((place) => {
+    const text = place.name.toUpperCase();
+    return { text, width: font.measureText(text).width + 14, ...project.toBase(place.lat, place.lng) };
+  });
+  const taken: (NameLabel & { width: number })[] = [];
+  const height = 20;
+  const markReach = 30;
+  for (const from of NAME_STEPS) {
+    const zoom = from ?? 1;
+    for (let i = 0; i < waiting.length; i++) {
+      const name = waiting[i];
+      if (!name) continue;
+      const clear = taken.every(
+        (other) =>
+          Math.abs(other.x - name.x) * zoom >= (other.width + name.width) / 2 ||
+          Math.abs(other.y - name.y) * zoom >= height
+      );
+      const onMark =
+        keepClear !== null &&
+        Math.abs(keepClear.x - name.x) * zoom < name.width / 2 + markReach / 2 &&
+        Math.abs(keepClear.y - name.y) * zoom < markReach;
+      if (!clear || onMark) continue;
+      taken.push({ id: `${name.text}:${i}`, text: name.text, x: name.x, y: name.y, from, width: name.width });
+      waiting[i] = null as never;
+    }
+  }
+  return taken;
 }
 
 function linePath(lines: LatLng[][], project: Projection, close: boolean) {
@@ -149,10 +255,14 @@ function clamp(value: number, min: number, max: number) {
 }
 
 export function RealmMap({
+  region,
+  me,
+  city,
   yourEaten,
   rivalEaten,
   selection,
   onSelect,
+  onMove,
   restBottom,
   panelBottom,
 }: Props) {
@@ -167,30 +277,121 @@ export function RealmMap({
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
   const grab = useSharedValue({ scale: 1, tx: 0, ty: 0, x: 0, y: 0 });
+  // How many of the two glides after a drag are still running.
+  const glides = useSharedValue(0);
 
   const width = size?.width ?? 0;
   const height = size?.height ?? 0;
 
   const scene = useMemo(() => {
     if (!size) return null;
-    const project = fit(size.width, size.height, restBottom);
-    const kingdomPaths = new Map(
-      KINGDOMS.map((k) => [k.id, linePath(k.rings, project, true)] as const)
-    );
+    const project = fit(size.width, size.height, restBottom, region);
+    // Seattle's outline, names and places, when any of Seattle can come into view.
+    const seattle = overlaps(growBounds(region, CITY_OVERDRAW), SEATTLE);
     return {
       project,
-      outline: linePath(LINES.outline, project, true),
-      borders: linePath(LINES.borders, project, false),
-      kingdomPaths,
-      labels: KINGDOMS.map((k) => ({
-        id: k.id,
-        text: k.name.toUpperCase(),
-        late: LATE_LABEL_KINGDOMS.has(k.id),
-        ...project.toBase(k.center[0], k.center[1]),
-      })),
+      outline: seattle ? linePath(LINES.outline, project, true) : null,
+      labels: seattle
+        ? DISTRICTS.map((d) => ({
+            id: d.id,
+            text: d.name.toUpperCase(),
+            late: LATE_LABEL_DISTRICTS.has(d.id),
+            ...project.toBase(d.center[0], d.center[1]),
+          }))
+        : [],
       places: PLACES.map((p) => vec(project.toBase(p.lat, p.lng).x, project.toBase(p.lat, p.lng).y)),
     };
-  }, [size, restBottom]);
+  }, [size, restBottom, region]);
+
+  // The real city, as paths. This is the big piece of work on the screen, so
+  // it only runs again for a new city or a new view size.
+  const ground = useMemo(() => {
+    if (!scene || !city) return null;
+    return {
+      water: cityPath(city.water, scene.project, true),
+      shore: cityPath(city.coast, scene.project, false),
+      majorRoads: cityPath(city.majorRoads, scene.project, false),
+      minorRoads: cityPath(city.minorRoads, scene.project, false),
+    };
+  }, [scene, city]);
+
+  const mePoint = scene && me ? scene.project.toBase(me.lat, me.lng) : null;
+  const cityNames = useMemo(() => {
+    if (!scene || !city || !labelFont) return [];
+    const drawn = growBounds(region, CITY_OVERDRAW);
+    const inside = city.places.filter(
+      (p) =>
+        p.lat >= drawn.minLat && p.lat <= drawn.maxLat && p.lng >= drawn.minLng && p.lng <= drawn.maxLng
+    );
+    return placeNames(inside, scene.project, labelFont, mePoint);
+    // The mark's point is two numbers, new on every render; its coordinates say when it moved.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene, city, region, labelFont, mePoint?.x, mePoint?.y]);
+
+  // The view the map asked to keep when it called onMove: a coordinate, the
+  // point of the screen it was at, and the zoom.
+  const carried = useSharedValue<{
+    lat: number;
+    lng: number;
+    x: number;
+    y: number;
+    scale: number;
+  } | null>(null);
+
+  // A region the map asked for keeps the view it had, so a drag goes on
+  // without a jump. Any other new region is a new map: the camera goes back
+  // to the whole of it.
+  useEffect(() => {
+    const keep = carried.get();
+    carried.set(null);
+    if (keep && scene) {
+      const at = scene.project.toBase(keep.lat, keep.lng);
+      scale.set(keep.scale);
+      tx.set(keep.x - at.x * keep.scale);
+      ty.set(keep.y - at.y * keep.scale);
+      return;
+    }
+    scale.set(1);
+    tx.set(0);
+    ty.set(0);
+    // The scene is the one made for this region in the same render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [region, scale, tx, ty, carried]);
+
+  // Called when a drag or a pinch comes to rest. If the middle of the open
+  // part of the view is far from the middle of the region, ask for a region
+  // around it.
+  const settle = (restTx: number, restTy: number, zoom: number) => {
+    // One ask at a time: the answer to the first has not been drawn yet.
+    if (!scene || carried.get()) return;
+    const x = width / 2;
+    const y = (height - restBottom) / 2;
+    const { lat, lng } = scene.project.toLatLng((x - restTx) / zoom, (y - restTy) / zoom);
+    const offLat = Math.abs(lat - (region.minLat + region.maxLat) / 2);
+    const offLng = Math.abs(lng - (region.minLng + region.maxLng) / 2);
+    if (
+      offLat < (region.maxLat - region.minLat) * MOVE_AFTER &&
+      offLng < (region.maxLng - region.minLng) * MOVE_AFTER
+    ) {
+      return;
+    }
+    carried.set({ lat, lng, x, y, scale: zoom });
+    onMove({ lat, lng });
+  };
+
+  // The kingdom the selection is in, as a shape.
+  const focusKingdom =
+    selection?.kind === 'kingdom'
+      ? selection.kingdom
+      : selection?.kind === 'place'
+        ? kingdomForPoint(selection.place.lat, selection.place.lng)
+        : null;
+  const focusPath = useMemo(
+    () => (scene && focusKingdom ? linePath([cellCorners(focusKingdom)], scene.project, true) : null),
+    // The id says which kingdom it is; the object is new on every tap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [scene, focusKingdom?.id]
+  );
 
   const heat = useMemo(() => {
     if (!scene) return [];
@@ -223,7 +424,7 @@ export function RealmMap({
     let target: { x: number; y: number; scale: number };
 
     if (selection.kind === 'kingdom') {
-      const bounds = scene.kingdomPaths.get(selection.kingdom.id)!.getBounds();
+      const bounds = linePath([cellCorners(selection.kingdom)], scene.project, true).getBounds();
       const fitScale = Math.min(
         (size.width * 0.7) / Math.max(bounds.width, 1),
         (openHeight * 0.7) / Math.max(bounds.height, 1)
@@ -266,8 +467,7 @@ export function RealmMap({
       }
     }
     const { lat, lng } = scene.project.toLatLng(bx, by);
-    const kingdom = kingdomForPoint(lat, lng);
-    onSelect(kingdom ? { kind: 'kingdom', kingdom } : null);
+    onSelect({ kind: 'kingdom', kingdom: kingdomForPoint(lat, lng) });
   };
 
   const gesture = useMemo(() => {
@@ -295,8 +495,17 @@ export function RealmMap({
       })
       .onEnd((e) => {
         const l = limits(scale.get());
-        tx.set(withDecay({ velocity: e.velocityX, clamp: [l.minX, l.maxX] }));
-        ty.set(withDecay({ velocity: e.velocityY, clamp: [l.minY, l.maxY] }));
+        // When both glides have stopped by themselves, see if the map has to
+        // follow. A glide that a new touch cut short does not count.
+        glides.set(2);
+        const rest = (finished?: boolean) => {
+          'worklet';
+          if (!finished) return;
+          glides.set(glides.get() - 1);
+          if (glides.get() === 0) scheduleOnRN(settle, tx.get(), ty.get(), scale.get());
+        };
+        tx.set(withDecay({ velocity: e.velocityX, clamp: [l.minX, l.maxX] }, rest));
+        ty.set(withDecay({ velocity: e.velocityY, clamp: [l.minY, l.maxY] }, rest));
       });
 
     // Two fingers zoom about the point between them, and carry the map along
@@ -313,6 +522,9 @@ export function RealmMap({
         scale.set(next);
         tx.set(clamp(e.focalX - (start.x - start.tx) * ratio, l.minX, l.maxX));
         ty.set(clamp(e.focalY - (start.y - start.ty) * ratio, l.minY, l.maxY));
+      })
+      .onEnd(() => {
+        scheduleOnRN(settle, tx.get(), ty.get(), scale.get());
       });
 
     const tap = Gesture.Tap()
@@ -326,7 +538,7 @@ export function RealmMap({
     return Gesture.Race(Gesture.Simultaneous(pan, pinch), tap);
     // handleTap closes over the scene and the callback, which change with them.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [width, height, scene, onSelect]);
+  }, [width, height, scene, onSelect, onMove, region, restBottom]);
 
   // --- Values every frame derives from the zoom -----------------------------------
   const camera = useDerivedValue(() => [
@@ -335,7 +547,9 @@ export function RealmMap({
     { scale: scale.value },
   ]);
   const outlineWidth = useDerivedValue(() => OUTLINE_WIDTH / scale.value);
-  const borderWidth = useDerivedValue(() => BORDER_WIDTH / scale.value);
+  const shoreWidth = useDerivedValue(() => SHORE_WIDTH / scale.value);
+  const majorRoadWidth = useDerivedValue(() => MAJOR_ROAD_WIDTH / scale.value);
+  const minorRoadWidth = useDerivedValue(() => MINOR_ROAD_WIDTH / scale.value);
   const focusWidth = useDerivedValue(() => FOCUS_WIDTH / scale.value);
   const placeOuter = useDerivedValue(() => 8 / scale.value);
   const placeInner = useDerivedValue(() => 4.6 / scale.value);
@@ -344,13 +558,11 @@ export function RealmMap({
   );
   const selectedOuter = useDerivedValue(() => 9 / scale.value);
   const selectedInner = useDerivedValue(() => 5 / scale.value);
+  const meRing = useDerivedValue(() => 13 / scale.value);
+  const meRingWidth = useDerivedValue(() => 1.4 / scale.value);
+  const meOuter = useDerivedValue(() => 8 / scale.value);
+  const meInner = useDerivedValue(() => 5.5 / scale.value);
 
-  const focusPath =
-    scene && selection
-      ? scene.kingdomPaths.get(
-          selection.kind === 'kingdom' ? selection.kingdom.id : (selection.place.kingdomId ?? '')
-        )
-      : undefined;
   const selectedPlace =
     scene && selection?.kind === 'place'
       ? scene.project.toBase(selection.place.lat, selection.place.lng)
@@ -366,11 +578,50 @@ export function RealmMap({
         }}
         accessible
         accessibilityRole="image"
-        accessibilityLabel="Map of Seattle's kingdoms, with heat where pizza has been eaten"
+        accessibilityLabel="Map of kingdoms, with heat where pizza has been eaten"
       >
         {scene ? (
           <Canvas style={styles.fill}>
             <Group transform={camera}>
+              {/* The city: water, streets, then the shore on top of both. */}
+              {ground ? (
+                <>
+                  <Path path={ground.water} color={WATER_COLOR} />
+                  <Path
+                    path={ground.minorRoads}
+                    style="stroke"
+                    strokeWidth={minorRoadWidth}
+                    strokeJoin="round"
+                    strokeCap="round"
+                    color={MINOR_ROAD_COLOR}
+                  />
+                  <Path
+                    path={ground.majorRoads}
+                    style="stroke"
+                    strokeWidth={majorRoadWidth}
+                    strokeJoin="round"
+                    strokeCap="round"
+                    color={MAJOR_ROAD_COLOR}
+                  />
+                  <Path
+                    path={ground.shore}
+                    style="stroke"
+                    strokeWidth={shoreWidth}
+                    strokeJoin="round"
+                    strokeCap="round"
+                    color={colors.brand}
+                  />
+                </>
+              ) : scene.outline ? (
+                <Path
+                  path={scene.outline}
+                  style="stroke"
+                  strokeWidth={outlineWidth}
+                  strokeJoin="round"
+                  color={colors.brand}
+                />
+              ) : null}
+
               {heat.map((glow) => (
                 <HeatGlow
                   key={glow.key}
@@ -383,22 +634,6 @@ export function RealmMap({
               ))}
 
               {focusPath ? <Path path={focusPath} color={`rgba(${YOU_RGB}, 0.07)`} /> : null}
-
-              <Path
-                path={scene.borders}
-                style="stroke"
-                strokeWidth={borderWidth}
-                strokeJoin="round"
-                strokeCap="round"
-                color={colors.brand}
-              />
-              <Path
-                path={scene.outline}
-                style="stroke"
-                strokeWidth={outlineWidth}
-                strokeJoin="round"
-                color={colors.brand}
-              />
               {focusPath ? (
                 <Path
                   path={focusPath}
@@ -433,19 +668,59 @@ export function RealmMap({
                 </>
               ) : null}
 
-              {labelFont
+              {labelFont && !ground
                 ? scene.labels.map((label) => (
-                    <KingdomLabel
+                    <MapLabel
                       key={label.id}
                       text={label.text}
                       x={label.x}
                       y={label.y}
-                      late={label.late}
+                      from={label.late ? LATE_LABELS_FROM : LABELS_FROM}
                       font={labelFont}
                       scale={scale}
                     />
                   ))
                 : null}
+              {labelFont
+                ? cityNames.map((label) => (
+                    <MapLabel
+                      key={label.id}
+                      text={label.text}
+                      x={label.x}
+                      y={label.y}
+                      from={label.from}
+                      font={labelFont}
+                      scale={scale}
+                    />
+                  ))
+                : null}
+
+              {/* You are here: a red dot in a ring, with the word under it. */}
+              {mePoint ? (
+                <>
+                  <Circle
+                    cx={mePoint.x}
+                    cy={mePoint.y}
+                    r={meRing}
+                    style="stroke"
+                    strokeWidth={meRingWidth}
+                    color={colors.brand}
+                  />
+                  <Circle cx={mePoint.x} cy={mePoint.y} r={meOuter} color={colors.surface} />
+                  <Circle cx={mePoint.x} cy={mePoint.y} r={meInner} color={colors.brand} />
+                  {labelFont ? (
+                    <MapLabel
+                      text="YOU"
+                      x={mePoint.x}
+                      y={mePoint.y}
+                      below={27}
+                      color={colors.brand}
+                      font={labelFont}
+                      scale={scale}
+                    />
+                  ) : null}
+                </>
+              ) : null}
             </Group>
           </Canvas>
         ) : null}
@@ -483,31 +758,40 @@ function HeatGlow({
   );
 }
 
-/** A kingdom's name in the sign capitals, the same size at every zoom. */
-function KingdomLabel({
+/**
+ * A name in the sign capitals, the same size at every zoom. With `from` it
+ * stays hidden until the user has moved in that far. `below` moves it down
+ * from its point, in screen points.
+ */
+function MapLabel({
   text,
   x,
   y,
-  late,
+  from,
+  below = 4,
+  color = colors.ink,
   font,
   scale,
 }: {
   text: string;
   x: number;
   y: number;
-  late: boolean;
+  from?: number;
+  below?: number;
+  color?: string;
   font: SkFont;
   scale: SharedValue<number>;
 }) {
   const textWidth = useMemo(() => font.measureText(text).width, [font, text]);
-  const from = late ? LATE_LABELS_FROM : LABELS_FROM;
   const transform = useDerivedValue(() => [
     { translateX: x },
     { translateY: y },
     { scale: 1 / scale.value },
   ]);
   const opacity = useDerivedValue(() =>
-    interpolate(scale.value, [from, from + 0.3], [0, 1], Extrapolation.CLAMP)
+    from === undefined
+      ? 1
+      : interpolate(scale.value, [from, from + 0.3], [0, 1], Extrapolation.CLAMP)
   );
   return (
     <Group transform={transform} opacity={opacity}>
@@ -515,14 +799,14 @@ function KingdomLabel({
       <SkiaText
         text={text}
         x={-textWidth / 2}
-        y={4}
+        y={below}
         font={font}
         style="stroke"
         strokeWidth={3.5}
         strokeJoin="round"
         color={colors.surface}
       />
-      <SkiaText text={text} x={-textWidth / 2} y={4} font={font} color={colors.ink} />
+      <SkiaText text={text} x={-textWidth / 2} y={below} font={font} color={color} />
     </Group>
   );
 }
