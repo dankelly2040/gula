@@ -157,7 +157,12 @@ export default function SignIn() {
             {step === 'email' ? (
               <>
                 <Text style={styles.inputLabel}>Email</Text>
-                <Host matchContents style={styles.inputHost}>
+                {/* Each step has its own field (`key`). The field keeps its own
+                    text, so one field used for both steps showed the email
+                    address in the code step (seen by testers, November 2026).
+                    The host takes its width from the page and only its height
+                    from the field, so it does not grow with the text. */}
+                <Host key="email" matchContents={{ vertical: true }} style={styles.inputHost}>
                   <TextInput
                     defaultValue={email}
                     onChangeText={setEmail}
@@ -187,11 +192,12 @@ export default function SignIn() {
             ) : (
               <>
                 <Text style={styles.inputLabel}>We sent a 6-digit code to {email}</Text>
-                <Host matchContents style={styles.inputHost}>
+                <Host key="code" matchContents={{ vertical: true }} style={styles.inputHost}>
                   <TextInput
                     defaultValue={code}
                     onChangeText={setCode}
                     placeholder="123456"
+                    autoFocus
                     placeholderTextColor={colors.textMuted}
                     keyboardType="number-pad"
                     maxLength={6}
@@ -285,6 +291,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   inputHost: {
+    alignSelf: 'stretch',
     backgroundColor: colors.bgInput,
     borderRadius: radii.md,
     ...sticker.border,
