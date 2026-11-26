@@ -1,0 +1,8 @@
+- The app is Pizza Quest. Each session starts on a new install, so the app opens as a new user.
+- At launch, an animated splash with a pizza slice shows for some seconds. Wait, then run describe again.
+- The first screen has the small heading "HOW IT WORKS", four lines ("Eat pizza.", "Log a pic.", "Earn Pizza Points.", "Become pizza royalty."), the button "Log your first slice" and the link "I already have an account". Headings and buttons show in capitals.
+- To reach the main screens without logging a pizza: tap "Log your first slice". If a dialog asks for the camera, tap "Don't Allow". The screen "SNAP YOUR SLICE." opens. Tap "Close". The app then shows a tab bar with four tabs: "My Pizza", "Realm", "Leaderboard" and "Profile".
+- If a dialog asks for your location, notifications or photos, tap "Don't Allow". System dialogs show in describe.
+- The app is connected to the live server that real players use. Do not tap "Save it", because that logs a pizza for a new player on the public leaderboard. Do not tap "Send code" with a valid email address, because that sends a real email.
+- The Leaderboard tab shows real players. A player with no name shows as "Pizza enthusiast". That is not an error.
+- The Realm tab shows a map of a city, with place names. With no location, the city is Seattle. The map can take some seconds to draw its streets.

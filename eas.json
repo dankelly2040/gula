@@ -19,6 +19,13 @@
       "distribution": "internal",
       "channel": "preview"
     },
+    "agent": {
+      "distribution": "internal",
+      "environment": "preview",
+      "ios": {
+        "simulator": true
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production"
