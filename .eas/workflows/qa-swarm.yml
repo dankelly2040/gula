@@ -60,7 +60,6 @@ jobs:
       FLOW: launch
     outputs:
       verdict: ${{ steps.lane.outputs.verdict }}
-      site_url: ${{ steps.lane.outputs.site_url }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
@@ -84,7 +83,6 @@ jobs:
       FLOW: navigation
     outputs:
       verdict: ${{ steps.lane.outputs.verdict }}
-      site_url: ${{ steps.lane.outputs.site_url }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
@@ -108,7 +106,6 @@ jobs:
       FLOW: realm
     outputs:
       verdict: ${{ steps.lane.outputs.verdict }}
-      site_url: ${{ steps.lane.outputs.site_url }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules
@@ -132,7 +129,6 @@ jobs:
       FLOW: sign-in
     outputs:
       verdict: ${{ steps.lane.outputs.verdict }}
-      site_url: ${{ steps.lane.outputs.site_url }}
     steps:
       - uses: eas/checkout
       - uses: eas/install_node_modules

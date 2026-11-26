@@ -41,10 +41,10 @@ env -u EXPO_TOKEN_SIMULATOR -u GITHUB_TOKEN -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHRO
   npx --yes eas-simulator-evidence@0.2.4 run agent-output/evidence --stop \
   --subject "QA Swarm: $WHERE $FLOW" --verdict-file agent-output/evidence/verdict.md \
   --build-id "$BUILD_ID" || echo "The evidence tool failed. The verdict and the screenshots are still in the artifacts." >&2
-SITE_URL=""
 
+# No site_url output: the site is not deployed, and set-output stops the
+# script when its value is empty.
 set-output verdict "$VERDICT"
-set-output site_url "$SITE_URL"
 
 case "$VERDICT" in
   PASS:*) exit 0 ;;
