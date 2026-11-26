@@ -28,7 +28,7 @@ export function shouldRestart(moment: UpdateMoment): boolean {
 }
 
 /** Screens that hold work in memory only: a restart there loses the draft. */
-const BUSY_ROUTES = ['/log', '/reward', '/sign-in'];
+const BUSY_ROUTES = ['/log', '/reward', '/name', '/sign-in'];
 
 export function isBusyPath(pathname: string): boolean {
   return BUSY_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));

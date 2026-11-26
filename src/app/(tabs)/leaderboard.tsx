@@ -3,6 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
+  Pressable,
   ScrollView,
   ActivityIndicator,
   RefreshControl,
@@ -13,6 +14,8 @@ import { SymbolView } from 'expo-symbols';
 import { Image } from 'expo-image';
 import { useObserve } from 'expo-observe';
 import { useLeaderboard, type LeaderboardPeriod } from '../../hooks/use-leaderboard';
+import { useProfile } from '../../hooks/use-profile';
+import { cleanDisplayName, NO_NAME } from '../../features/display-name';
 import { useSessionStore } from '../../state/session';
 import { PillButton } from '../../components/sticker';
 import { CountUp } from '../../components/stat-row';
@@ -51,6 +54,12 @@ export default function Leaderboard() {
   const { data, isLoading, isError, refetch, isRefetching } = useLeaderboard(period);
   const entries = data ?? [];
   const me = entries.find((e) => e.userId === userId);
+
+  // The player's own row shows the name stored on this phone, which is right
+  // the moment they change it; the board's copy waits for the next sync.
+  const { data: profile, isFetched: profileLoaded } = useProfile();
+  const myName = cleanDisplayName(profile?.displayName);
+  const nameless = profileLoaded && !!me && !myName;
 
   const renderBody = () => {
     if (isLoading) {
@@ -103,11 +112,25 @@ export default function Leaderboard() {
           />
         }
       >
+        {/* A player with no name cannot be told apart from the next one. */}
+        {nameless && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add your name"
+            style={({ pressed }) => [styles.nameNudge, pressed && styles.nameNudgePressed]}
+            onPress={() => router.push('/name')}
+          >
+            <Text style={styles.nameNudgeText}>You are on the board as {NO_NAME}.</Text>
+            <Text style={styles.nameNudgeAction}>Add your name</Text>
+          </Pressable>
+        )}
+
         {entries.map((entry, i) => (
           <FadeUp key={entry.userId} runId={runId} delay={Math.min(i, 8) * 70}>
             <Row
               entry={entry}
               isMe={entry.userId === userId}
+              name={entry.userId === userId && profileLoaded ? myName : entry.displayName}
               index={i}
               first={i === 0}
               runId={runId}
@@ -141,12 +164,15 @@ export default function Leaderboard() {
 
 function Row({
   entry,
+  name,
   isMe,
   index,
   first,
   runId,
 }: {
   entry: LeaderboardEntry;
+  /** The name to show: the board's, or the player's own stored one. */
+  name: string | null;
   isMe: boolean;
   index: number;
   first: boolean;
@@ -169,7 +195,7 @@ function Row({
 
       <View style={styles.rowInfo}>
         <Text style={[styles.rowName, isMe && styles.rowNameMe]} numberOfLines={1}>
-          {entry.displayName?.trim() || 'Pizza enthusiast'}
+          {cleanDisplayName(name) ?? NO_NAME}
           {isMe ? ' (you)' : ''}
         </Text>
         <Text style={styles.rowMeta}>
@@ -294,6 +320,31 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: fontSize.lg,
     color: colors.gold,
+  },
+  nameNudge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  nameNudgePressed: {
+    opacity: 0.6,
+  },
+  nameNudgeText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  nameNudgeAction: {
+    fontFamily: fonts.label,
+    fontSize: 13,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: colors.brand,
   },
   notRankedText: {
     fontSize: fontSize.sm,

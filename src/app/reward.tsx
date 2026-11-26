@@ -14,6 +14,8 @@ import { SymbolView } from 'expo-symbols';
 import { useEffect } from 'react';
 import { ACHIEVEMENT_DEFS, type AchievementType } from '../db/types';
 import { useSessionStore } from '../state/session';
+import { needsName } from '../features/display-name';
+import { useProfile } from '../hooks/use-profile';
 import { FadeUp } from '../components/fade-up';
 import { PizzaConfetti } from '../components/pizza-confetti';
 import { CountUp } from '../components/stat-row';
@@ -31,6 +33,7 @@ export default function Reward() {
   }>();
   const isAnonymous = useSessionStore((s) => s.isAnonymous);
   const markAccountPromptSeen = useSessionStore((s) => s.markAccountPromptSeen);
+  const { data: profile, isFetched: profileLoaded } = useProfile();
 
   const points = Number(params.points) || 0;
   const isFirst = params.first === '1';
@@ -81,12 +84,19 @@ export default function Reward() {
 
   const dismiss = () => router.replace('/(tabs)');
 
-  // First log, no account yet: the next step asks for one, now that there
-  // are points worth keeping.
+  // First log: the next steps ask for a name for the leaderboard, then, with
+  // no account yet, for an account, now that there are points worth keeping.
+  // The name step goes on to the account prompt itself.
+  const askForName = isFirst && profileLoaded && needsName(profile?.displayName);
   const promptForAccount = isFirst && isAnonymous;
   const handleContinue = () => {
+    const params = { intent: 'first-log', points: String(points) };
+    if (askForName) {
+      router.replace({ pathname: '/name', params });
+      return;
+    }
     markAccountPromptSeen();
-    router.replace({ pathname: '/sign-in', params: { intent: 'first-log', points: String(points) } });
+    router.replace({ pathname: '/sign-in', params });
   };
 
   return (
@@ -156,7 +166,7 @@ export default function Reward() {
               First slice in the books. Every pizza from here adds to your total.
             </Text>
             <View style={styles.buttonStack}>
-              {promptForAccount ? (
+              {askForName || promptForAccount ? (
                 <PillButton label="Continue" onPress={handleContinue} />
               ) : (
                 <PillButton label="See my pizzas" onPress={dismiss} />

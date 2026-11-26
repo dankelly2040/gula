@@ -30,6 +30,21 @@ export function useSaveProfile() {
   });
 }
 
+/** A profile with nothing in it yet, for a player who has none stored. */
+export function blankProfile(userId: string | null): UserProfile {
+  return {
+    id: userId ?? 'local',
+    displayName: null,
+    avatarUrl: null,
+    favoriteStyle: null,
+    homeCity: null,
+    totalPoints: 0,
+    totalLogs: 0,
+    currentStreak: 0,
+    shareWithCommunity: false,
+  };
+}
+
 export function useEnsureProfile() {
   const { data: profile } = useProfile();
   const { mutate: save } = useSaveProfile();
@@ -37,17 +52,7 @@ export function useEnsureProfile() {
 
   const ensureProfile = (): UserProfile => {
     if (profile) return profile;
-    const newProfile: UserProfile = {
-      id: userId ?? 'local',
-      displayName: null,
-      avatarUrl: null,
-      favoriteStyle: null,
-      homeCity: null,
-      totalPoints: 0,
-      totalLogs: 0,
-      currentStreak: 0,
-      shareWithCommunity: false,
-    };
+    const newProfile = blankProfile(userId);
     save(newProfile);
     return newProfile;
   };

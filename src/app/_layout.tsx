@@ -107,6 +107,10 @@ function RootLayout() {
             <Stack.Screen name="(onboarding)" />
           </Stack.Protected>
           <Stack.Screen
+            name="name"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
             name="sign-in"
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />

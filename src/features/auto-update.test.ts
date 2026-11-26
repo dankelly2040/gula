@@ -28,8 +28,8 @@ describe('shouldRestart', () => {
 });
 
 describe('isBusyPath', () => {
-  test('the logging flow, the reward and sign in are busy', () => {
-    for (const path of ['/log/capture', '/log/rate', '/log/details', '/reward', '/sign-in']) {
+  test('the logging flow, the reward, the name step and sign in are busy', () => {
+    for (const path of ['/log/capture', '/log/rate', '/log/details', '/reward', '/name', '/sign-in']) {
       expect(isBusyPath(path)).toBe(true);
     }
   });
