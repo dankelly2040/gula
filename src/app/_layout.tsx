@@ -11,6 +11,7 @@ import { Appearance, AppState, StyleSheet } from 'react-native';
 import { Observe, ObserveRoot, useObserve } from 'expo-observe';
 import { AnimatedSplash } from '../components/animated-splash';
 import { SplashDoneContext } from '../lib/splash-gate';
+import { useAutoUpdate } from '../hooks/use-auto-update';
 import { colors } from '../constants/theme';
 
 // Hold the native splash (plain white) until the animated splash
@@ -37,6 +38,8 @@ function RootLayout() {
   const [hydrated, setHydrated] = useState(useSessionStore.persist.hasHydrated());
   const [splashDone, setSplashDone] = useState(false);
   const { markInteractive } = useObserve();
+  // Load a downloaded update at the first moment nobody loses anything.
+  useAutoUpdate(splashDone);
 
   // Sign lettering (see fonts in constants/theme). A load error falls back
   // to the system font rather than holding the app on the splash.
