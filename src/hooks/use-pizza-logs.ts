@@ -15,6 +15,7 @@ import type { PizzaLog, UserProfile } from '../db/types';
 import { computeLogRewards, computeWeeklyStreak, type LogRewards } from '../features/gamification';
 import { useSessionStore } from '../state/session';
 import { dropCutout } from '../lib/cutouts';
+import { dropPhoto } from '../lib/photos';
 
 export function usePizzaLogs() {
   return useQuery({
@@ -113,6 +114,7 @@ export function useDeleteLog() {
     mutationFn: async (id: string) => {
       await deleteLog(id);
       dropCutout(id);
+      dropPhoto(id);
       await enqueueSyncOp({ kind: 'delete-log', id });
       void syncWithCloud();
     },

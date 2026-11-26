@@ -10,6 +10,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { SliceArt } from './onboarding-art';
 import { cutoutUriFor } from '../lib/cutouts';
+import { photoFor } from '../lib/photos';
 import { getZoneForScore } from '../constants/enums';
 import {
   colors,
@@ -117,9 +118,8 @@ export function FloatingPizza({
   const name = log.spotName ?? 'Unknown spot';
 
   const cutoutUri = cutoutUriFor(log.id);
-  // The local photo goes stale when iOS renumbers the app container; the
-  // uploaded copy survives.
-  const photoUri = log.photoUri ?? log.photoUrl;
+  // The file on this phone, else the uploaded copy (lib/photos).
+  const photoUri = photoFor(log);
   const [cutoutBroken, setCutoutBroken] = useState(false);
   const [photoBroken, setPhotoBroken] = useState(false);
   const kind: 'cutout' | 'photo' | 'art' =

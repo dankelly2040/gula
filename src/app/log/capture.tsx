@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '../../lib/nav';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -45,6 +45,23 @@ export default function Capture() {
   // and the controls dim, like a shutter that has not come back yet.
   const [holding, setHolding] = useState(false);
   const reset = useDraftLogStore((s) => s.reset);
+  // Opened from an edit to take a new photo for a saved log: the camera
+  // hands the photo back to the rate screen under it and leaves the rest of
+  // the draft alone.
+  const { replace } = useLocalSearchParams<{ replace?: string }>();
+  const replacing = replace === '1';
+
+  // However this screen is left (a button or the back swipe), settle the
+  // photo that was set aside: gone if a new one was taken, back if not.
+  useEffect(() => {
+    if (!replacing) return;
+    return () => {
+      const draft = useDraftLogStore.getState();
+      if (!draft.replaced) return;
+      if (draft.photoUri === null) draft.cancelReplace();
+      else draft.commitReplace();
+    };
+  }, [replacing]);
 
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
@@ -77,12 +94,16 @@ export default function Capture() {
     const elapsed = Date.now() - liftStartedAt.current;
     const id = setTimeout(() => {
       liftStartedAt.current = null;
+      if (replacing) {
+        goBack();
+        return;
+      }
       router.push({ pathname: '/log/rate', params: { lift: '1' } });
       // Release after the push has had a frame to mount the rate screen.
       setTimeout(() => setHolding(false), 600);
     }, Math.max(0, FREEZE_MS - elapsed));
     return () => clearTimeout(id);
-  }, [lift.status, router]);
+  }, [lift.status, router, replacing]);
 
   const pickFromLibrary = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -113,11 +134,16 @@ export default function Capture() {
   };
 
   const handleClose = () => {
-    reset();
+    if (replacing) useDraftLogStore.getState().cancelReplace();
+    else reset();
     goBack();
   };
 
   const handleSkip = () => {
+    if (replacing) {
+      goBack();
+      return;
+    }
     router.push('/log/rate');
   };
 
@@ -148,10 +174,12 @@ export default function Capture() {
               <Ionicons name="close" size={24} color={INK} />
             </CircleButton>
             <PillButton
-              onPress={() => router.push({ pathname: '/log/rate', params: { lift: '1' } })}
+              onPress={() =>
+                replacing ? goBack() : router.push({ pathname: '/log/rate', params: { lift: '1' } })
+              }
               disabled={holding || lift.status === 'pending'}
               icon="checkmark"
-              label="Rate it"
+              label={replacing ? 'Use photo' : 'Rate it'}
             />
             <CircleButton onPress={handleRetake} label="Retake photo">
               <Ionicons name="refresh" size={22} color={INK} />
@@ -238,9 +266,12 @@ export default function Capture() {
         </>
       )}
 
-      <Pressable accessibilityRole="button" onPress={handleSkip} hitSlop={8} style={styles.skip}>
-        <Text style={styles.skipText}>Skip photo</Text>
-      </Pressable>
+      {/* A log being edited already has its photo or its choice of none. */}
+      {!replacing && (
+        <Pressable accessibilityRole="button" onPress={handleSkip} hitSlop={8} style={styles.skip}>
+          <Text style={styles.skipText}>Skip photo</Text>
+        </Pressable>
+      )}
     </View>
   );
 }

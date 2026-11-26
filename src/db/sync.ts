@@ -21,6 +21,7 @@ import {
   upsertRemoteAchievement,
 } from './remote-store';
 import { uploadPhoto, PhotoUnreadableError } from '../lib/images';
+import { localPhotoFor } from '../lib/photos';
 import { useSessionStore } from '../state/session';
 
 /**
@@ -61,7 +62,8 @@ async function applyOp(op: SyncOp, userId: string): Promise<void> {
       const log = (await getLogs()).find((l) => l.id === op.id);
       if (!log) return;
       let photoUrl = log.photoUrl;
-      let photoUri = log.photoUri;
+      // The path on the log can be out of date; ask where the file is now.
+      let photoUri = localPhotoFor(log) ?? log.photoUri;
       if (!photoUrl && photoUri) {
         try {
           photoUrl = await uploadPhoto(photoUri, userId, log.id);

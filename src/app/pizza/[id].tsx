@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { usePizzaLogs, useDeleteLog } from '../../hooks/use-pizza-logs';
 import { useDraftLogStore } from '../../state/draft-log';
+import { photoFor } from '../../lib/photos';
 import { getZoneForScore } from '../../constants/enums';
 import type { SubScores, PizzaTags } from '../../db/types';
 import { CircleButton } from '../../components/sticker';
@@ -30,6 +31,7 @@ export default function PizzaDetail() {
     );
   }
 
+  const photo = photoFor(log);
   const zone = getZoneForScore(log.moneyShot);
   const date = new Date(log.timestamp).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -41,7 +43,7 @@ export default function PizzaDetail() {
   const handleEdit = () => {
     const draft = useDraftLogStore.getState();
     draft.reset();
-    draft.setPhoto(log.photoUri ?? log.photoUrl);
+    draft.seedPhoto(photoFor(log));
     draft.setMoneyShot(log.moneyShot);
     (Object.keys(log.subScores) as (keyof SubScores)[]).forEach((key) => {
       draft.setSubScore(key, log.subScores[key]);
@@ -112,15 +114,8 @@ export default function PizzaDetail() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Same fallback as the card: photoUri dies with the app container,
-            photoUrl does not. The edit draft below already does this. */}
-        {(log.photoUri || log.photoUrl) && (
-          <Image
-            source={{ uri: (log.photoUri ?? log.photoUrl)! }}
-            style={styles.photo}
-            contentFit="cover"
-          />
-        )}
+        {/* The file on this phone, else the uploaded copy (lib/photos). */}
+        {photo && <Image source={{ uri: photo }} style={styles.photo} contentFit="cover" />}
 
         <View style={styles.body}>
           <Text style={styles.spotName}>{log.spotName ?? 'Unknown spot'}</Text>

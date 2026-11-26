@@ -21,6 +21,7 @@ import type { PizzaLog } from '../../db/types';
 import { generateId } from '../../lib/id';
 import { getCurrentCoords } from '../../lib/location';
 import { dropCutout, keepCutout } from '../../lib/cutouts';
+import { keepPhoto } from '../../lib/photos';
 import { SpotPicker } from '../../components/spot-picker';
 import {
   PIZZA_STYLES,
@@ -111,12 +112,17 @@ export default function Details() {
     if (editId) {
       const original = logs?.find((l) => l.id === editId);
       if (!original) return;
-      // Keep identity, timestamp, points, and remote photo; take edits from the draft.
+      // Keep identity, timestamp and points; take edits from the draft. A new
+      // photo is copied into permanent storage and uploaded again; an
+      // unchanged one keeps both of its addresses.
+      const photoChanged = draft.photoUri !== draft.seedPhotoUri;
+      const newPhoto = photoChanged && draft.photoUri ? (keepPhoto(draft.photoUri, original.id) ?? draft.photoUri) : null;
       const updated: PizzaLog = {
         ...original,
         spotId: draft.spotId,
         spotName: draft.spotName,
-        photoUri: draft.photoUri,
+        photoUri: photoChanged ? newPhoto : original.photoUri,
+        photoUrl: photoChanged ? null : original.photoUrl,
         moneyShot: draft.moneyShot,
         pizzaScore: computePizzaScore(draft.subScores),
         experienceScore: computeExperienceScore(draft.subScores),
@@ -133,26 +139,26 @@ export default function Details() {
         return;
       }
       // A replaced photo makes the stored cutout stale.
-      if (draft.photoUri !== original.photoUri) {
+      if (photoChanged) {
         if (liftedCutout) keepCutout(liftedCutout, original.id);
         else dropCutout(original.id);
       }
       draft.reset();
-      if (router.canDismiss()) {
-        router.dismiss();
-      } else {
-        goBack();
-      }
+      // Back to the log's own page. `dismiss()` only took this screen off the
+      // logging stack and left the rate screen showing an empty draft.
+      router.dismissTo(`/pizza/${original.id}`);
       return;
     }
 
+    const id = generateId();
     const log: PizzaLog = {
-      id: generateId(),
+      id,
       userId: 'local',
       spotId: draft.spotId,
       spotName: draft.spotName,
       timestamp: new Date().toISOString(),
-      photoUri: draft.photoUri,
+      // The camera's own file is in a folder iOS may clear; keep a copy.
+      photoUri: draft.photoUri ? (keepPhoto(draft.photoUri, id) ?? draft.photoUri) : null,
       photoUrl: null,
       moneyShot: draft.moneyShot,
       pizzaScore: computePizzaScore(draft.subScores),

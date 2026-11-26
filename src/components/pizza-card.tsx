@@ -5,6 +5,7 @@ import { SymbolView } from 'expo-symbols';
 import { colors, spacing, fontSize, radii, sticker } from '../constants/theme';
 import { getZoneForScore } from '../constants/enums';
 import type { PizzaLog } from '../db/types';
+import { photoFor } from '../lib/photos';
 
 type Props = {
   log: PizzaLog;
@@ -14,6 +15,7 @@ type Props = {
 export function PizzaCard({ log, rank }: Props) {
   const router = useRouter();
   const zone = getZoneForScore(log.moneyShot);
+  const photo = photoFor(log);
   const date = new Date(log.timestamp);
   const dateStr = date.toLocaleDateString('en-US', {
     month: 'short',
@@ -35,15 +37,9 @@ export function PizzaCard({ log, rank }: Props) {
         </View>
       )}
 
-      {/* Fall back to the uploaded copy: the local file lives in the app
-          container, which iOS renumbers on reinstall, so photoUri goes stale
-          while photoUrl survives. */}
-      {log.photoUri || log.photoUrl ? (
-        <Image
-          source={{ uri: (log.photoUri ?? log.photoUrl)! }}
-          style={styles.photo}
-          contentFit="cover"
-        />
+      {/* The file on this phone, else the uploaded copy (lib/photos). */}
+      {photo ? (
+        <Image source={{ uri: photo }} style={styles.photo} contentFit="cover" />
       ) : (
         <View style={[styles.photo, styles.photoPlaceholder]}>
           <SymbolView name="fork.knife" size={32} tintColor={colors.textMuted} />

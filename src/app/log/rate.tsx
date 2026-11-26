@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { MoneyShotSlider } from '../../components/money-shot-slider';
 import { ScorePips } from '../../components/score-pips';
 import { useDraftLogStore } from '../../state/draft-log';
+import { cutoutUriFor } from '../../lib/cutouts';
 import { SEND_FRIEND_OPTIONS } from '../../constants/enums';
 import { PillButton, StickerChip } from '../../components/sticker';
 import { colors, fonts, spacing, fontSize } from '../../constants/theme';
@@ -18,8 +19,15 @@ export default function Rate() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { editId, lift } = useLocalSearchParams<{ editId?: string; lift?: string }>();
-  const photoUri = useDraftLogStore((s) => s.photoUri);
-  const liftState = useDraftLogStore((s) => s.lift);
+  // While the camera is open for a new photo (edit), the photo set aside
+  // stays in view here, so this screen does not change under the camera.
+  const held = useDraftLogStore((s) => s.replaced);
+  const draftPhotoUri = useDraftLogStore((s) => s.photoUri);
+  const draftLift = useDraftLogStore((s) => s.lift);
+  const photoUri = held ? held.photoUri : draftPhotoUri;
+  const liftState = held ? held.lift : draftLift;
+  const seedPhotoUri = useDraftLogStore((s) => s.seedPhotoUri);
+  const beginReplace = useDraftLogStore((s) => s.beginReplace);
   const moneyShot = useDraftLogStore((s) => s.moneyShot);
   const setMoneyShot = useDraftLogStore((s) => s.setMoneyShot);
   const subScores = useDraftLogStore((s) => s.subScores);
@@ -50,8 +58,17 @@ export default function Rate() {
   const handleLiftDone = useCallback(() => setLifting(false), []);
 
   const liftResult = liftState.status === 'done' ? liftState.result : null;
-  const heroUri = liftResult?.cutoutUri ?? liftResult?.photoUri ?? photoUri;
-  const heroIsCutout = liftResult?.cutoutUri != null;
+  // An edit that has not changed the photo shows the cutout kept for the log.
+  const keptCutout =
+    !liftResult && editId && photoUri !== null && photoUri === seedPhotoUri ? cutoutUriFor(editId) : null;
+  const cutout = liftResult?.cutoutUri ?? keptCutout;
+  const heroUri = cutout ?? liftResult?.photoUri ?? photoUri;
+  const heroIsCutout = cutout != null;
+
+  const changePhoto = () => {
+    beginReplace();
+    router.push({ pathname: '/log/capture', params: { replace: '1' } });
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
@@ -90,7 +107,31 @@ export default function Rate() {
             <Animated.View style={[styles.heroBadge, formStyle]}>
               <Text style={styles.heroBadgeText}>Your slice</Text>
             </Animated.View>
+            {editId && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Change photo"
+                onPress={changePhoto}
+                hitSlop={12}
+                style={({ pressed }) => [styles.photoLink, pressed && styles.photoLinkPressed]}
+              >
+                <Ionicons name="camera-outline" size={16} color={colors.brand} />
+                <Text style={styles.photoLinkText}>Change photo</Text>
+              </Pressable>
+            )}
           </View>
+        )}
+        {!photoUri && editId && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add a photo"
+            onPress={changePhoto}
+            hitSlop={12}
+            style={({ pressed }) => [styles.photoLink, styles.photoLinkAlone, pressed && styles.photoLinkPressed]}
+          >
+            <Ionicons name="camera-outline" size={16} color={colors.brand} />
+            <Text style={styles.photoLinkText}>Add a photo</Text>
+          </Pressable>
         )}
 
         <Animated.View style={formStyle}>
@@ -267,6 +308,27 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     textTransform: 'uppercase',
     color: colors.textSecondary,
+  },
+  // The one way to a new photo in an edit: a red word, like every tap target.
+  photoLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 32,
+  },
+  photoLinkAlone: {
+    alignSelf: 'center',
+    marginBottom: spacing.md,
+  },
+  photoLinkPressed: {
+    opacity: 0.55,
+  },
+  photoLinkText: {
+    fontFamily: fonts.label,
+    fontSize: 12,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.brand,
   },
   scrollContent: {
     paddingHorizontal: spacing.lg,

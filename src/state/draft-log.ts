@@ -12,6 +12,10 @@ export type LiftState =
 type DraftLogState = {
   photoUri: string | null;
   lift: LiftState;
+  /** Edit only: the photo the log had when the edit started. */
+  seedPhotoUri: string | null;
+  /** Edit only: the photo set aside while the user takes a new one. */
+  replaced: { photoUri: string | null; lift: LiftState } | null;
   moneyShot: number;
   subScores: SubScores;
   sendFriend: SendFriend | null;
@@ -23,6 +27,14 @@ type DraftLogState = {
   lng: number | null;
 
   setPhoto: (uri: string | null) => void;
+  /** Start an edit with the log's own photo. */
+  seedPhoto: (uri: string | null) => void;
+  /** Set the current photo aside and show the camera again. */
+  beginReplace: () => void;
+  /** Bring back the photo that was set aside. */
+  cancelReplace: () => void;
+  /** Keep the new photo and forget the one set aside. */
+  commitReplace: () => void;
   startLift: (uri: string) => Promise<void>;
   setMoneyShot: (value: number) => void;
   setSubScore: (key: keyof SubScores, value: number | null) => void;
@@ -55,6 +67,8 @@ const initialTags: PizzaTags = {
 export const useDraftLogStore = create<DraftLogState>((set, get) => ({
   photoUri: null,
   lift: { status: 'idle' },
+  seedPhotoUri: null,
+  replaced: null,
   moneyShot: 50,
   subScores: { ...initialSubScores },
   sendFriend: null,
@@ -66,6 +80,16 @@ export const useDraftLogStore = create<DraftLogState>((set, get) => ({
   lng: null,
 
   setPhoto: (uri) => set({ photoUri: uri, lift: { status: 'idle' } }),
+  seedPhoto: (uri) => set({ photoUri: uri, seedPhotoUri: uri, lift: { status: 'idle' }, replaced: null }),
+  beginReplace: () =>
+    set((s) => ({
+      replaced: s.replaced ?? { photoUri: s.photoUri, lift: s.lift },
+      photoUri: null,
+      lift: { status: 'idle' },
+    })),
+  cancelReplace: () =>
+    set((s) => (s.replaced ? { photoUri: s.replaced.photoUri, lift: s.replaced.lift, replaced: null } : {})),
+  commitReplace: () => set({ replaced: null }),
   startLift: async (uri) => {
     set({ lift: { status: 'pending' } });
     const result = await liftSubject(uri);
@@ -85,6 +109,8 @@ export const useDraftLogStore = create<DraftLogState>((set, get) => ({
     set({
       photoUri: null,
       lift: { status: 'idle' },
+      seedPhotoUri: null,
+      replaced: null,
       moneyShot: 50,
       subScores: { ...initialSubScores },
       sendFriend: null,

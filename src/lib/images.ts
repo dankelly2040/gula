@@ -44,5 +44,7 @@ export async function uploadPhoto(localUri: string, userId: string, logId: strin
   if (error) throw new Error(error.message);
 
   const { data } = supabase.storage.from('pizza-photos').getPublicUrl(path);
-  return data.publicUrl;
+  // A replaced photo is uploaded over the old one at the same path. The
+  // version on the end makes it a new address, so no cache shows the old one.
+  return `${data.publicUrl}?v=${Date.now()}`;
 }
