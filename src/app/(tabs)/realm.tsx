@@ -30,18 +30,14 @@ import {
   districtById,
   homeRegion,
   kingdomForPoint,
-  kingdomLeader,
-  kingdomsLed,
   placesInKingdom,
   pointsByKingdom,
   regionAround,
   withinBounds,
   type Eaten,
   type Kingdom,
-  type Leader,
   type Place,
 } from '@/features/realm';
-import { DEMO_RIVAL, DEMO_SELF_EATEN } from '@/features/realm-demo';
 
 // The screen follows My Pizza: a white page, a red headline in sign
 // capitals, plain figures, and no boxes. The map under the header is drawn
@@ -49,7 +45,14 @@ import { DEMO_RIVAL, DEMO_SELF_EATEN } from '@/features/realm-demo';
 // with the shore as a thin red line, streets in quiet grey and place names.
 // It opens on the city of the player's latest pizza. What it shows is heat. Every pizza eaten is a soft glow where it was
 // eaten, sized by the points it earned, so points piling up in a
-// neighborhood read as a hot spot. Red is you. Charcoal is the rival.
+// neighborhood read as a hot spot. Red is you.
+//
+// Only the player's own pizzas are on the map. The app cannot read another
+// player's pizzas yet: that needs the server (public logs summed per
+// kingdom). An invented rival stood in for one until November 2026 and was
+// removed before beta testers joined, so that nothing on the map is made up.
+// The map can still draw a second player in charcoal (`rivalEaten`), and the
+// rules for one are in features/realm (`kingdomLeader`, `kingdomsLed`).
 
 // Roughly what the detail panel covers at the bottom of the map, so a
 // selection is centered in the part that stays open.
@@ -91,16 +94,11 @@ export default function Realm() {
   );
 
   // Your pizzas come from your own logs: every one that has a location, in
-  // any city. A development build falls back to a sample for you when none
-  // of your logs has a location, so the heat can still be judged there.
+  // any city.
   const { data: logs } = usePizzaLogs();
-  const { yourEaten, latest, usingSample } = useMemo(() => {
+  const { yourEaten, latest } = useMemo(() => {
     const located = (logs ?? []).filter((log) => log.lat != null && log.lng != null);
-    if (located.length === 0) {
-      return __DEV__
-        ? { yourEaten: DEMO_SELF_EATEN, latest: DEMO_SELF_EATEN[0], usingSample: true }
-        : { yourEaten: NO_PIZZA, latest: null, usingSample: false };
-    }
+    if (located.length === 0) return { yourEaten: NO_PIZZA, latest: null };
     const newest = located.reduce((a, b) => (a.timestamp >= b.timestamp ? a : b));
     return {
       yourEaten: located.map((log) => ({
@@ -109,38 +107,25 @@ export default function Realm() {
         points: log.pointsEarned,
       })),
       latest: { lat: newest.lat!, lng: newest.lng! },
-      usingSample: false,
     };
   }, [logs]);
 
   // The map opens where you are, when location is allowed, framed on the
   // pizzas you have eaten around there. Without location it opens on the city
-  // of your latest pizza, and with no located pizza either, on Seattle. The
-  // sample data is in Seattle, so a sample map stays there.
+  // of your latest pizza, and with no located pizza either, on Seattle.
   const region = useMemo(() => {
     if (around) return regionAround(around.lat, around.lng);
-    return homeRegion(yourEaten, usingSample ? latest : (me ?? latest));
-  }, [around, yourEaten, latest, me, usingSample]);
+    return homeRegion(yourEaten, me ?? latest);
+  }, [around, yourEaten, latest, me]);
   const city = useCityName(region);
 
-  // The rival is invented for now (see features/realm-demo) and eats only in
-  // Seattle. A player whose map is another city has no rival yet, so the
-  // screen shows none there.
-  const rivalHere = useMemo(
-    () => DEMO_RIVAL.eaten.some((e) => withinBounds(region, e.lat, e.lng)),
-    [region]
-  );
-  const rivalEaten = rivalHere ? DEMO_RIVAL.eaten : NO_PIZZA;
-
-  // Where each player has eaten, so the places list can mark those spots.
+  // Where you have eaten, so the places list can mark those spots.
   const yourSpots = useMemo(() => new Set(yourEaten.map(spotKey)), [yourEaten]);
-  const rivalSpots = useMemo(() => new Set(rivalEaten.map(spotKey)), [rivalEaten]);
 
+  // A kingdom is yours once a pizza you ate there has earned points.
   const yourPoints = useMemo(() => pointsByKingdom(yourEaten), [yourEaten]);
-  const rivalPoints = useMemo(() => pointsByKingdom(rivalEaten), [rivalEaten]);
-  const led = kingdomsLed(yourPoints, rivalPoints);
-  const sum = (totals: Record<string, number>) =>
-    Object.values(totals).reduce((a, b) => a + b, 0);
+  const totalPoints = Object.values(yourPoints).reduce((a, b) => a + b, 0);
+  const claimed = Object.values(yourPoints).filter((points) => points > 0).length;
 
   // Every point on the map is in a kingdom, so a tap always names one. A
   // second tap on the open kingdom closes it.
@@ -207,25 +192,11 @@ export default function Realm() {
           <Side
             name="You"
             dot={colors.brand}
-            points={sum(yourPoints)}
-            kingdoms={led.you}
+            points={totalPoints}
+            kingdoms={claimed}
             pointsColor={colors.brand}
           />
-          {rivalHere ? (
-            <Side
-              name={DEMO_RIVAL.name}
-              dot={colors.ink}
-              points={sum(rivalPoints)}
-              kingdoms={led.rival}
-              pointsColor={colors.textPrimary}
-            />
-          ) : null}
         </FadeUp>
-        {usingSample ? (
-          <Text style={styles.sampleNote}>
-            Sample heat for you. None of your pizzas has a location yet.
-          </Text>
-        ) : null}
       </View>
 
       <View style={styles.mapWrap}>
@@ -234,7 +205,7 @@ export default function Realm() {
           me={me}
           city={cityData}
           yourEaten={yourEaten}
-          rivalEaten={rivalEaten}
+          rivalEaten={NO_PIZZA}
           selection={selection}
           onSelect={select}
           onMove={setAround}
@@ -267,11 +238,7 @@ export default function Realm() {
                 key={selection.kingdom.id}
                 kingdom={selection.kingdom}
                 yours={yourPoints[selection.kingdom.id] ?? 0}
-                theirs={rivalPoints[selection.kingdom.id] ?? 0}
-                leader={kingdomLeader(selection.kingdom.id, yourPoints, rivalPoints)}
-                showRival={rivalHere}
                 yourSpots={yourSpots}
-                rivalSpots={rivalSpots}
                 onSelectPlace={(place) => select({ kind: 'place', place })}
               />
             ) : (
@@ -284,7 +251,7 @@ export default function Realm() {
   );
 }
 
-/** One player in the header: who, how many points on the map, how many kingdoms led. */
+/** The player in the header: who, how many points on the map, how many kingdoms claimed. */
 function Side({
   name,
   dot,
@@ -302,7 +269,7 @@ function Side({
     <View
       style={styles.side}
       accessible
-      accessibilityLabel={`${name}: ${points} Pizza Points, leads ${kingdoms} ${kingdoms === 1 ? 'kingdom' : 'kingdoms'}`}
+      accessibilityLabel={`${name}: ${points} Pizza Points, ${kingdoms} ${kingdoms === 1 ? 'kingdom' : 'kingdoms'} claimed`}
     >
       <View style={styles.sideName}>
         <View style={[styles.dot, { backgroundColor: dot }]} />
@@ -313,35 +280,21 @@ function Side({
       <Text style={[styles.sidePoints, { color: pointsColor }]}>{points}</Text>
       <Text style={styles.figureLabel}>Pizza Points</Text>
       <Text style={styles.sideKingdoms}>
-        Leads {kingdoms} {kingdoms === 1 ? 'kingdom' : 'kingdoms'}
+        {kingdoms} {kingdoms === 1 ? 'kingdom' : 'kingdoms'} claimed
       </Text>
     </View>
   );
 }
 
-const LEADER_LINE: Record<Exclude<Leader, null>, string> = {
-  you: 'You lead',
-  rival: `${DEMO_RIVAL.name} leads`,
-  tie: 'Tied',
-};
-
 function KingdomPanel({
   kingdom,
   yours,
-  theirs,
-  leader,
-  showRival,
   yourSpots,
-  rivalSpots,
   onSelectPlace,
 }: {
   kingdom: Kingdom;
   yours: number;
-  theirs: number;
-  leader: Leader;
-  showRival: boolean;
   yourSpots: Set<string>;
-  rivalSpots: Set<string>;
   onSelectPlace: (place: Place) => void;
 }) {
   const [showPlaces, setShowPlaces] = useState(false);
@@ -377,16 +330,13 @@ function KingdomPanel({
 
   return (
     <View style={styles.panel}>
-      <Text style={styles.kicker}>Kingdom · {leader ? LEADER_LINE[leader] : 'Unclaimed'}</Text>
+      <Text style={styles.kicker}>Kingdom · {yours > 0 ? 'Yours' : 'Unclaimed'}</Text>
       {/* The name can take a moment to arrive; the line keeps its height. */}
       <Text style={styles.panelTitle} numberOfLines={1}>
         {name === undefined ? ' ' : (name ?? coordinateName(kingdom.center))}
       </Text>
       <View style={styles.figureRow}>
         <Figure value={yours} label="You" color={colors.brand} />
-        {showRival ? (
-          <Figure value={theirs} label={DEMO_RIVAL.name} color={colors.textPrimary} />
-        ) : null}
         {/* The one figure that opens: the places in this kingdom. */}
         <Pressable
           accessibilityRole="button"
@@ -429,12 +379,9 @@ function KingdomPanel({
                       </Text>
                     ) : null}
                   </View>
-                  {/* Who has eaten here. */}
+                  {/* A red dot marks a place where you have eaten. */}
                   {yourSpots.has(key) ? (
                     <View style={[styles.dot, { backgroundColor: colors.brand }]} />
-                  ) : null}
-                  {rivalSpots.has(key) ? (
-                    <View style={[styles.dot, { backgroundColor: colors.ink }]} />
                   ) : null}
                 </Pressable>
               );
@@ -495,8 +442,8 @@ const styles = StyleSheet.create({
     color: colors.brand,
     marginBottom: spacing.md,
   },
-  // Two equal columns, you and the rival, each centered. The dot beside the
-  // name is the key to the heat colors on the map.
+  // The player's figures, centered. The dot beside the name is the key to
+  // the heat color on the map.
   versus: {
     flexDirection: 'row',
     marginBottom: spacing.md,
@@ -537,12 +484,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     color: colors.textSecondary,
     textAlign: 'center',
-  },
-  sampleNote: {
-    fontSize: 11,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
   },
   mapWrap: {
     flex: 1,

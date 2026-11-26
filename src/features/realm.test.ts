@@ -20,7 +20,6 @@ import {
   visibleTiers,
   withinBounds,
 } from './realm';
-import { DEMO_RIVAL, DEMO_SELF_EATEN } from './realm-demo';
 import { KINGDOM_FILLS } from '@/constants/theme';
 
 describe('district data', () => {
@@ -217,23 +216,5 @@ describe('territory points', () => {
     ]);
     expect(sources).toHaveLength(2);
     expect(sources.find((s) => s.lat === inBallard.lat)?.points).toBe(25);
-  });
-});
-
-describe('demo rival', () => {
-  test('has eaten only at real places inside Seattle', () => {
-    expect(DEMO_RIVAL.eaten.length).toBeGreaterThan(8);
-    for (const e of DEMO_RIVAL.eaten) {
-      expect(districtForPoint(e.lat, e.lng)).not.toBeNull();
-      expect(e.points).toBeGreaterThan(0);
-    }
-  });
-
-  test('the sample for you and the rival contest some kingdoms and split others', () => {
-    const you = pointsByKingdom(DEMO_SELF_EATEN);
-    const rival = pointsByKingdom(DEMO_RIVAL.eaten);
-    const led = kingdomsLed(you, rival);
-    expect(led.you).toBeGreaterThan(0);
-    expect(led.rival).toBeGreaterThan(0);
   });
 });
