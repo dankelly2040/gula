@@ -12,8 +12,15 @@ APP_ID=$(npx expo config --json | node -e 'const config = JSON.parse(require("fs
 : "${APP_ID:?The app config has no app ID for $1. Add it to app.json or app.config.js.}"
 mkdir -p agent-output/evidence
 
+# Not in the docs version: a lane can name the device model in DEVICE, such
+# as "iPhone Duo" (see `eas simulator:devices`). With no DEVICE, the runner
+# uses its default device.
+DEVICE_ARGS=()
+[ -n "${DEVICE:-}" ] && DEVICE_ARGS=(--device "$DEVICE")
+
 export EXPO_TOKEN="$EXPO_TOKEN_SIMULATOR"
 npx --yes eas-cli@latest simulator:start --platform "$1" --type argent \
+  ${DEVICE_ARGS[@]+"${DEVICE_ARGS[@]}"} \
   --build-id "$2" --name "$3" --tag "$4" \
   --max-duration-minutes 30 --json > /tmp/session.json
 trap 'npx --yes eas-cli@latest simulator:stop --non-interactive > /dev/null 2>&1 || true' EXIT
@@ -37,6 +44,7 @@ cat > agent-output/device.md << EOF
 - Platform: $1
 - App ID: $APP_ID
 - Device ID: $UDID
+- Device model: ${DEVICE:-the default device of the runner}
 
 Control the device only with this shell command:
 
@@ -53,6 +61,10 @@ Use these Argent tools:
 - screenshot --scale $SCALE --out agent-output/evidence/<number>-<name>.png saves a screenshot.
 - restart-app --bundleId $APP_ID opens the app again.
 EOF
+
+if [ -n "${DEVICE:-}" ]; then
+  printf '\nThis lane runs on the device model "%s". In your verdict, also say if text or a button is cut off, or if content is behind a bar or an edge of the screen.\n' "$DEVICE" >> agent-output/device.md
+fi
 
 if [ -f .eas/agents/app-facts.md ]; then
   printf '\n## App facts\n\n' >> agent-output/device.md

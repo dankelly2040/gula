@@ -9,7 +9,10 @@ FLOW_FILE=".eas/qa-flows/$FLOW.$PLATFORM.md"
 [ -f "$FLOW_FILE" ] || FLOW_FILE=".eas/qa-flows/$FLOW.md"
 [ -f "$FLOW_FILE" ] || { echo "No flow file for $FLOW. Add .eas/qa-flows/$FLOW.md." >&2; exit 1; }
 
-source .eas/agents/start-session.sh "$PLATFORM" "$BUILD_ID" "QA Swarm: $PLATFORM $FLOW" qa-swarm
+# DEVICE is optional: the device model for this lane, such as "iPhone Duo".
+WHERE="$PLATFORM${DEVICE:+ on $DEVICE}"
+
+source .eas/agents/start-session.sh "$PLATFORM" "$BUILD_ID" "QA Swarm: $WHERE $FLOW" qa-swarm
 
 {
   cat .eas/agents/qa-lane.md
@@ -36,7 +39,7 @@ VERDICT=$(head -n 1 agent-output/evidence/verdict.md)
 env -u EXPO_TOKEN_SIMULATOR -u GITHUB_TOKEN -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY \
   -u CODEX_API_KEY -u CURSOR_API_KEY -u XAI_API_KEY \
   npx --yes eas-simulator-evidence@0.2.4 run agent-output/evidence --stop \
-  --subject "QA Swarm: $PLATFORM $FLOW" --verdict-file agent-output/evidence/verdict.md \
+  --subject "QA Swarm: $WHERE $FLOW" --verdict-file agent-output/evidence/verdict.md \
   --build-id "$BUILD_ID" || echo "The evidence tool failed. The verdict and the screenshots are still in the artifacts." >&2
 SITE_URL=""
 
